@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: pablo-os
+    runtime: docker
+    plan: free
+    region: frankfurt
+    numInstances: 1
+    dockerfilePath: ./Dockerfile
+    dockerCommand: python -m pablo.cloud
+    healthCheckPath: /ready
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: PABLO_CLOUD_MASTER_KEY
+        generateValue: true
+      - key: PABLO_OWNER_PASSWORD
+        sync: false
+      - key: PABLO_OWNER_NAME
+        value: Pablo
+      - key: AI_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: AI_MODEL
+        value: openai/gpt-oss-120b
+      - key: AI_API_KEY
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: DAILY_TOKEN_LIMIT
+        value: "50000"

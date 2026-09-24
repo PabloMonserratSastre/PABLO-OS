@@ -1,0 +1,119 @@
+/* Alpine glass theme. Visual layer only; application behavior stays in React. */
+.agents-guide { margin: 12px 0 20px; }
+.agents-guide > .muted { margin-top: 10px; max-width: 900px; }
+.daily-summary { margin-bottom: 24px; }
+.daily-summary h2 { display: flex; align-items: center; gap: 10px; }
+.daily-summary h2 svg { color: #967020; }
+.daily-summary .section-header { flex-wrap: wrap; }
+.daily-summary .rich p { margin: 4px 0; font-size: .875rem; }
+:root, .dark {
+  --background: #e8f0fa !important;
+  --foreground: #122345 !important;
+  --card: #f3f7fd !important;
+  --card-foreground: #122345 !important;
+  --popover: #f5f8fe !important;
+  --popover-foreground: #122345 !important;
+  --primary: #c5ddff !important;
+  --primary-foreground: #173e78 !important;
+  --secondary: #e5eefb !important;
+  --secondary-foreground: #27476d !important;
+  --muted: #e4edf8 !important;
+  --muted-foreground: #52688c !important;
+  --accent: #d5e5fa !important;
+  --accent-foreground: #173e78 !important;
+  --destructive: #b52b48 !important;
+  --border: #cbd9eb !important;
+  --input: #bdcfe4 !important;
+  --ring: #477fc2 !important;
+  --sidebar: #eef4fc !important;
+  --sidebar-foreground: #344e76 !important;
+  --sidebar-primary: #c5ddff !important;
+  --sidebar-primary-foreground: #173e78 !important;
+  --sidebar-accent: #cfe2fc !important;
+  --sidebar-accent-foreground: #163e78 !important;
+  --sidebar-border: #ceddef !important;
+  color-scheme: light;
+}
+html body { background: #e7f0fa; color: #122345; }
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(100deg, #f1f6fccc, #e9f2fc66), url('./alpine-background.png') center / cover;
+}
+body [data-slot="sidebar-wrapper"], body .workspace { background: transparent; }
+body [data-slot="sidebar-inner"] {
+  background: linear-gradient(140deg, #f9fbffdd, #e5effbba);
+  backdrop-filter: blur(22px); border: 1px solid #ffffffed;
+  border-radius: 24px; box-shadow: 0 12px 35px #375b8520;
+}
+@media (min-width: 768px) {
+  body [data-slot="sidebar-container"] { padding: 14px 10px 14px 13px; }
+  body .topbar { margin: 10px 14px 0 20px; border-radius: 16px; height: 60px; }
+  body .content { padding-top: 38px; }
+  body .home-grid { grid-template-columns: minmax(230px, .8fr) minmax(0, 2.7fr); gap: 16px; }
+  body .focus-panel .section-header { align-items: flex-start; flex-wrap: wrap; }
+}
+body .topbar { background: #f1f7fcb3; backdrop-filter: blur(20px); border: 1px solid #ffffff70; }
+body .panel, body .composer, body .metric-strip > div {
+  background: linear-gradient(120deg, #f9fbffdb, #eaf3fcc4);
+  border: 1px solid #fffffff0; border-radius: 17px;
+  box-shadow: 0 8px 28px #345a7f12, inset 0 1px 0 #fff9;
+  backdrop-filter: blur(18px);
+}
+body .composer { padding: 23px; }
+body .composer textarea::placeholder { color: #20365c; }
+body .composer-input > svg { color: #348c79; }
+body .composer-footer [data-state="active"] { background: #c8e0ff !important; color: #194786 !important; }
+body .metric-strip { gap: 16px; margin: 18px 0; }
+body .metric-strip > div { padding: 16px 22px; flex-direction: column; gap: 0; align-items: flex-start; }
+body .metric-strip > div:first-child { padding-left: 22px; }
+body .metric-strip > div:last-child { border: 1px solid #fff; }
+body .metric-strip strong { color: #10234b; line-height: 1.2; }
+body .suggestions button, body .run-preview { background: #f5f9fed4; border: 1px solid #ffffff99; border-radius: 12px; }
+body .run-preview { padding: 10px; margin-top: 7px; }
+body .runtime-badge { background: #f3fbf9cc; color: #245b4c; border-color: #d2e4df; border-radius: 12px; }
+body .runtime-badge::before { content: ''; display: inline-block; width: 8px; height: 8px; background: #399879; border-radius: 50%; margin-right: 8px; }
+body .brand { color: #14284c; }
+body .logo { background: #132b27; color: #def0e5; box-shadow: inset 0 0 0 3px #233a35; }
+body .sidebar-search { background: #f7faffb8; box-shadow: 0 3px 10px #33557908; }
+body .notice { background: #fff8e9ed; color: #735725; border-color: #e9dbb9; }
+body .error { color: #a72643; }
+body .badge.good { background: #deeee7; color: #226049; border-color: #bad9ca; }
+body .badge.warm { background: #fbefd6; color: #78521b; border-color: #e5d2a7; }
+body .calendar-day { background: #f7fbffba; color: #233b60; }
+body .calendar-day.selected { background: #cce1fc; color: #173d70; border-color: #7eacd9; }
+body .calendar-day.today { border-color: #427ab4; }
+body .agenda-event { background: #f5f9fedb; }
+body [data-slot="dialog-content"], body [data-slot="sheet-content"], body [data-slot="alert-dialog-content"], body [data-slot="select-content"], body [data-slot="popover-content"] {
+  background: #f5f8fef5; color: #172c4d; border-color: #fff; box-shadow: 0 24px 80px #19395633; backdrop-filter: blur(24px);
+}
+body input, body textarea, body [data-slot="select-trigger"] { background-color: #f8fbffb8; color: #172c4d; }
+body button, body a { transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+body button:hover:not(:disabled) { filter: brightness(.98); }
+body .suggestions button:hover, body .project-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px #385e8120; }
+body .content { animation: alpine-arrive .4s ease-out; }
+@keyframes alpine-arrive { from { opacity: .35; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+body button:focus-visible, body a:focus-visible, body input:focus-visible, body textarea:focus-visible { outline-color: #477fc2; }
+@media (max-width: 767px) {
+  body .topbar { padding: 0 14px; }
+  body .metric-strip { gap: 10px; }
+  body .metric-strip > div { padding: 14px; }
+  body .metric-strip > div:first-child { padding-left: 14px; }
+  body .composer { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body *, body *::before, body *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+
+/* Supplied PABLO OS artwork, shared by login and navigation. */
+body img.logo { width: 44px; height: 44px; object-fit: contain; background: transparent; box-shadow: none; border: 0; border-radius: 10px; }
+
+/* Keep the outer sidebar divider invisible in the glass layout. */
+body [data-slot="sidebar-container"] { border-color: transparent; }
+
+@media (max-width: 767px) {
+  body input, body textarea, body select { font-size: 16px; }
+  body .content { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+  body .topbar { padding-top: env(safe-area-inset-top); }
+  body .composer { scroll-margin-bottom: 20px; }
+}
