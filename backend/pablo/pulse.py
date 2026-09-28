@@ -71,7 +71,12 @@ def build_pulse(items: list[dict], runs: list[dict], approval_count: int, timezo
     if due_today:
         signals.append({"kind": "today", "title": f"{len(due_today)} para hoy", "detail": due_today[0]["title"], "destination": "Tareas"})
     if failed:
-        signals.append({"kind": "failed", "title": f"{len(failed)} ejecución{'es' if len(failed) != 1 else ''} a revisar", "detail": failed[0]["goal"], "destination": "Actividad"})
+        signals.append({
+            "kind": "failed",
+            "title": f"{len(failed)} ejecución{'es' if len(failed) != 1 else ''} fallida{'s' if len(failed) != 1 else ''}",
+            "detail": failed[0]["goal"],
+            "run_id": failed[0].get("id"),
+        })
     if not signals:
         signals.append({"kind": "clear", "title": "Sin alertas", "detail": "Todo funciona con normalidad"})
 

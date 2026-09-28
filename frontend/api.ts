@@ -56,6 +56,7 @@ export type PulseSignal = {
   title: string;
   detail: string;
   destination?: string;
+  run_id?: string;
 };
 export type Pulse = {
   generated_at: string;

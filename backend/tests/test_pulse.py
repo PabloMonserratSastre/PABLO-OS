@@ -29,3 +29,14 @@ def test_state_includes_pulse(client):
     state = client.get("/api/v1/state").json()
     assert state["pulse"]["label"] == "En calma"
     assert state["pulse"]["pending"] == 0
+
+
+def test_failed_signal_opens_the_exact_run():
+    pulse = build_pulse([], [{"id": "run-failed", "goal": "Investigar n8n", "status": "FAILED"}], 0, "Europe/Madrid", "Pablo")
+    signal = pulse["signals"][0]
+    assert signal == {
+        "kind": "failed",
+        "title": "1 ejecución fallida",
+        "detail": "Investigar n8n",
+        "run_id": "run-failed",
+    }

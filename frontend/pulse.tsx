@@ -8,11 +8,13 @@ export function Pulse({
   busy,
   onPrompt,
   onNavigate,
+  onOpenRun,
 }: {
   pulse: PulseState;
   busy: boolean;
   onPrompt: (prompt: string) => void;
   onNavigate: (destination: string) => void;
+  onOpenRun: (runId: string) => void;
 }) {
   const action = pulse.next_action;
   return (
@@ -44,14 +46,15 @@ export function Pulse({
         {pulse.signals.map((signal, index) => (
           <button
             key={`${signal.kind}-${index}`}
-            disabled={!signal.destination}
-            onClick={() => signal.destination && onNavigate(signal.destination)}
+            disabled={!signal.destination && !signal.run_id}
+            onClick={() => signal.run_id ? onOpenRun(signal.run_id) : signal.destination && onNavigate(signal.destination)}
+            aria-label={signal.run_id ? `${signal.title}: abrir el error` : undefined}
           >
             <span className={`signal-icon signal-${signal.kind}`}>
               {signal.kind === "clear" ? <CheckCircle2 size={16} /> : <Clock3 size={16} />}
             </span>
             <span><strong>{signal.title}</strong><small>{signal.detail}</small></span>
-            {signal.destination && <ArrowUpRight size={14} />}
+            {(signal.destination || signal.run_id) && <ArrowUpRight size={14} />}
           </button>
         ))}
       </div>

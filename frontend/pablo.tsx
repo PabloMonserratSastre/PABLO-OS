@@ -660,6 +660,7 @@ export default function Pablo() {
                 busy={busy}
                 onPrompt={(prompt) => void send(prompt)}
                 onNavigate={navigate}
+                onOpenRun={(id) => void openRun(id)}
               />
               <DailySummary run={state.daily_summary} onRun={(id) => void openRun(id)} />
               <div className="home-composer">
