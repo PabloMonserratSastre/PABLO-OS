@@ -94,6 +94,8 @@ export type Integration = {
   detail: string;
   configured?: boolean;
   config?: Record<string, unknown>;
+  scopes?: string[];
+  verified?: boolean;
 };
 export type Activity = {
   id: string;
@@ -168,6 +170,8 @@ export const labels: Record<string, string> = {
   NOT_CONFIGURED: "Sin configurar",
   DISCONNECTED: "Desconectado",
   CONFIGURED: "Configurado",
+  PUBLIC_READ: "Lectura pública",
+  ERROR: "Necesita atención",
   SAFE: "Consulta",
   MODERATE: "Cambio local",
   CRITICAL: "Requiere aprobación",

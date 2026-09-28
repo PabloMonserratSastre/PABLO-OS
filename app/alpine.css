@@ -125,6 +125,52 @@ body .pulse-signals strong { font-size: .8rem; }
 body .pulse-signals small { margin-top: 2px; color: #bdd0d2; font-size: .72rem; }
 body .signal-icon { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 10px; color: var(--pulse-accent); background: #ffffff12; }
 body .signal-overdue, body .signal-failed, body .signal-blocked { color: #ffbd91; }
+
+/* Integration hub: outcomes first, credentials second. */
+body .integration-hero {
+  position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(260px, .7fr); gap: 28px;
+  align-items: center; margin-bottom: 34px; padding: 32px; color: #f7fffd;
+  background: linear-gradient(125deg, #142d45f2, #174c55ed 64%, #1b655ce8);
+  border: 1px solid #dff9f25c; border-radius: 22px; box-shadow: 0 18px 44px #193c5529, inset 0 1px 0 #ffffff2e;
+}
+body .integration-hero::after { content: ''; position: absolute; width: 350px; height: 350px; right: -150px; bottom: -230px; border-radius: 50%; background: #6de0b94a; filter: blur(2px); }
+body .integration-eyebrow { display: flex; align-items: center; gap: 8px; color: #7ee4c3; font-size: .72rem; font-weight: 800; letter-spacing: .13em; }
+body .integration-hero h2 { margin: 11px 0 8px; color: #fff; font-size: clamp(1.65rem, 3vw, 2.6rem); letter-spacing: -.035em; }
+body .integration-hero p { max-width: 720px; margin: 0; color: #d8e8ea; line-height: 1.6; }
+body .integration-stats { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+body .integration-stats div { padding: 18px; background: #ffffff0e; border: 1px solid #ffffff1d; border-radius: 15px; }
+body .integration-stats strong, body .integration-stats span { display: block; }
+body .integration-stats strong { color: #fff; font-size: 1.8rem; line-height: 1; }
+body .integration-stats span { margin-top: 7px; color: #c9dddf; font-size: .73rem; }
+body .integration-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin: 0 0 17px; }
+body .integration-section-heading > div > span { color: #317c69; font-size: .68rem; font-weight: 800; letter-spacing: .14em; }
+body .integration-section-heading h2 { margin: 5px 0 3px; color: #13294c; font-size: 1.35rem; }
+body .integration-section-heading p { margin: 0; color: #52688c; font-size: .83rem; }
+body .connections-heading { margin-top: 40px; }
+body .recipe-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
+body .recipe-card { display: flex; flex-direction: column; min-height: 220px; padding: 20px; background: linear-gradient(145deg, #fbfdffe8, #eaf4fccc); border: 1px solid #ffffffed; border-radius: 17px; box-shadow: 0 8px 24px #345a7f10; transition: transform .18s ease, box-shadow .18s ease; }
+body .recipe-card:hover { transform: translateY(-3px); box-shadow: 0 14px 30px #345a7f1c; }
+body .recipe-card.locked { background: linear-gradient(145deg, #f7f9fce0, #e8eef6c2); }
+body .recipe-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+body .recipe-top > span { display: grid; place-items: center; width: 39px; height: 39px; color: #247463; background: #dcefe9; border-radius: 12px; }
+body .recipe-top em { display: flex; align-items: center; gap: 4px; color: #247463; font-size: .67rem; font-style: normal; font-weight: 700; }
+body .recipe-card h3 { margin: 16px 0 6px; color: #152a4e; font-size: 1rem; }
+body .recipe-card p { flex: 1; margin: 0 0 18px; color: #52688c; font-size: .79rem; line-height: 1.55; }
+body .recipe-card button { width: 100%; justify-content: space-between; }
+body .integration-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; }
+body .integration-card { display: flex; flex-direction: column; min-height: 330px; }
+body .integration-card h2 { margin: 15px 0 5px; font-size: 1.05rem; }
+body .integration-card > p { margin: 0 0 14px; color: #52688c; font-size: .78rem; line-height: 1.5; }
+body .integration-card ul { flex: 1; display: flex; flex-direction: column; gap: 9px; margin: 3px 0 18px; padding: 0; list-style: none; }
+body .integration-card li { display: flex; align-items: center; gap: 7px; color: #314d70; font-size: .76rem; }
+body .integration-card li svg { color: #3a947b; }
+body .integration-mark { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 13px; }
+body .integration-sky { color: #286b9a; background: #dcedfb; }
+body .integration-ink { color: #243650; background: #e2e8f0; }
+body .integration-violet { color: #6752a3; background: #ece7fa; }
+body .integration-amber { color: #946c24; background: #f8edcf; }
+body .integration-coral { color: #a75345; background: #f8e2dd; }
+body .verified-note { display: flex; align-items: center; gap: 5px; margin: 0 0 12px; color: #247463; font-size: .7rem; }
 body .brand { color: #14284c; }
 body .logo { background: #132b27; color: #def0e5; box-shadow: inset 0 0 0 3px #233a35; }
 body .sidebar-search { background: #f7faffb8; box-shadow: 0 3px 10px #33557908; }
@@ -165,6 +211,13 @@ body button:focus-visible, body a:focus-visible, body input:focus-visible, body 
   body .pulse-signals { display: flex; overflow-x: auto; margin-inline: -4px; padding: 0 4px 3px; scroll-snap-type: x proximity; }
   body .pulse-signals button { flex: 0 0 min(260px, 82vw); scroll-snap-align: start; }
   body .pulse-actions { grid-column: 1 / -1; }
+  body .integration-hero { grid-template-columns: 1fr; padding: 22px 19px; margin-bottom: 28px; }
+  body .integration-stats { max-width: none; }
+  body .recipe-grid { display: flex; overflow-x: auto; margin-inline: -16px; padding: 0 16px 8px; scroll-snap-type: x mandatory; }
+  body .recipe-card { flex: 0 0 min(290px, 82vw); scroll-snap-align: start; }
+  body .integration-grid { grid-template-columns: 1fr; }
+  body .integration-card { min-height: 0; backdrop-filter: none; background: linear-gradient(145deg, #fbfdfff5, #eaf3fcf2); }
+  body .integration-section-heading { align-items: flex-start; flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) {
   body *, body *::before, body *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

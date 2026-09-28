@@ -625,6 +625,8 @@ export default function Pablo() {
                         ? "Lo que recuerdas, visible y bajo tu control."
                         : view === "Archivos"
                           ? "Tus documentos, convertidos en contexto."
+                        : view === "Integraciones"
+                          ? "Tus servicios trabajando juntos, desde una sola conversación."
                           : ""}
               </p>
             </div>
@@ -1147,6 +1149,7 @@ export default function Pablo() {
             <RemotePanel
               key={view}
               view={view}
+              onPrompt={(prompt) => void send(prompt)}
             />
           )}
           {view === "Ajustes" && (

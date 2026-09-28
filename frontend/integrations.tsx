@@ -1,5 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
-import { ExternalLink, Link2, Unplug, RefreshCw } from "lucide-react";
+import {
+  ArrowUpRight,
+  BookOpen,
+  CalendarDays,
+  CheckCircle2,
+  Cloud,
+  ExternalLink,
+  GitBranch,
+  Globe2,
+  Link2,
+  Mail,
+  RefreshCw,
+  Sparkles,
+  Unplug,
+  Workflow,
+  Zap,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -60,6 +76,99 @@ const guidance: Record<string, string> = {
   search:
     "Usa una clave de Brave Search para buscar información actual con enlaces a sus fuentes.",
 };
+const providerDetails = {
+  google: {
+    icon: Cloud,
+    color: "sky",
+    capabilities: ["Consultar y crear eventos", "Buscar, leer y enviar correo", "Encontrar y leer archivos"],
+  },
+  github: {
+    icon: GitBranch,
+    color: "ink",
+    capabilities: ["Explorar repositorios", "Comparar código", "Preparar ramas y cambios"],
+  },
+  notion: {
+    icon: BookOpen,
+    color: "violet",
+    capabilities: ["Buscar conocimiento", "Leer páginas", "Crear documentación"],
+  },
+  search: {
+    icon: Globe2,
+    color: "amber",
+    capabilities: ["Investigar temas actuales", "Consultar fuentes", "Preparar informes"],
+  },
+  n8n: {
+    icon: Workflow,
+    color: "coral",
+    capabilities: ["Activar automatizaciones", "Conectar cientos de aplicaciones", "Enviar datos revisados"],
+  },
+} as const;
+
+const recipes = [
+  {
+    title: "Mi mañana en 30 segundos",
+    description: "Correos recientes, agenda de hoy y tres prioridades claras.",
+    provider: "google",
+    icon: Sparkles,
+    prompt: "Consulta mis 10 últimos correos recibidos en Gmail y los eventos de hoy en Google Calendar. Dame un resumen muy breve, separa lo urgente de lo informativo y termina con mis tres prioridades. No envíes ni modifiques nada.",
+  },
+  {
+    title: "Limpiar mi bandeja mental",
+    description: "Clasifica lo importante sin tocar ni enviar ningún correo.",
+    provider: "google",
+    icon: Mail,
+    prompt: "Busca en Gmail los correos recibidos y no leídos de los últimos 7 días. Clasifícalos en: requiere respuesta, importante sin respuesta y prescindible. Sé conciso y no envíes ni modifiques nada.",
+  },
+  {
+    title: "Preparar el día de mañana",
+    description: "Revisa las citas de mañana y detecta choques o huecos.",
+    provider: "google",
+    icon: CalendarDays,
+    prompt: "Consulta en Google Calendar todos mis eventos de mañana. Ordénalos por hora, avísame si se solapan y dime qué huecos libres tengo. No crees ni modifiques eventos.",
+  },
+  {
+    title: "Encontrar un documento",
+    description: "Busca en Drive por significado y resume el archivo correcto.",
+    provider: "google",
+    icon: Cloud,
+    prompt: "Quiero encontrar un documento en Google Drive. Pregúntame qué recuerdo de él, búscalo y, cuando lo identifiques, resume su contenido sin modificarlo.",
+  },
+  {
+    title: "Revisión semanal",
+    description: "Une agenda y correo para cerrar la semana con perspectiva.",
+    provider: "google",
+    icon: CheckCircle2,
+    prompt: "Prepara mi revisión semanal: consulta los eventos de los últimos 7 días en Google Calendar y mis correos relevantes de ese periodo. Resume compromisos, asuntos pendientes y próximos pasos. No envíes ni cambies nada.",
+  },
+  {
+    title: "Entender un repositorio",
+    description: "Explora un proyecto y explica su estructura sin cambiar código.",
+    provider: "github",
+    icon: GitBranch,
+    prompt: "Quiero entender un repositorio de GitHub. Pregúntame cuál es, explora su estructura y explícame para qué sirve, cómo se organiza y cuáles son sus posibles riesgos. No modifiques nada.",
+  },
+  {
+    title: "Consultar mi conocimiento",
+    description: "Encuentra información entre las páginas compartidas de Notion.",
+    provider: "notion",
+    icon: BookOpen,
+    prompt: "Quiero buscar información en mi Notion. Pregúntame qué necesito encontrar, consulta las páginas compartidas y responde con una síntesis clara. No crees ni modifiques páginas.",
+  },
+  {
+    title: "Investigar con fuentes",
+    description: "Busca información actual y devuelve una respuesta contrastada.",
+    provider: "search",
+    icon: Globe2,
+    prompt: "Quiero investigar un tema con información actual. Pregúntame cuál es, busca fuentes fiables y dame una síntesis breve con los enlaces utilizados.",
+  },
+  {
+    title: "Automatizar una rutina",
+    description: "Diseña una automatización conectable con cientos de servicios.",
+    provider: "n8n",
+    icon: Zap,
+    prompt: "Quiero automatizar una rutina con n8n. Pregúntame qué quiero que ocurra, cuándo debe ocurrir y qué aplicaciones participan. Después prepara una propuesta segura antes de ejecutar ningún webhook.",
+  },
+] as const;
 function providerId(item: Integration) {
   return (
     item.id ||
@@ -77,7 +186,7 @@ function providerId(item: Integration) {
     item.name.toLowerCase()
   );
 }
-export function IntegrationsPanel() {
+export function IntegrationsPanel({ onPrompt }: { onPrompt: (prompt: string) => void }) {
   const [items, setItems] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -118,18 +227,38 @@ export function IntegrationsPanel() {
     }
   }, [load]);
   const id = selected ? providerId(selected) : "";
+  const privateConnections = items.filter((item) =>
+    ["CONNECTED", "CONFIGURED"].includes(item.status),
+  ).length;
+  const isUsable = (provider: string) => {
+    const item = items.find((candidate) => providerId(candidate) === provider);
+    return !!item && (
+      ["CONNECTED", "CONFIGURED"].includes(item.status) ||
+      (["github", "search"].includes(provider) && item.status === "PUBLIC_READ")
+    );
+  };
+  function manage(item: Integration) {
+    setSelected(item);
+    setValues(
+      Object.fromEntries(
+        Object.entries(item.config || {}).map(([key, value]) => [key, String(value)]),
+      ),
+    );
+    setDisconnect(false);
+  }
   return (
     <>
-      <div className="section-header">
-        <p className="section-note">
-          Conecta tus servicios para consultar información y ejecutar las
-          acciones disponibles de sus agentes.
-        </p>
-        <Button variant="outline" size="sm" onClick={() => void load()}>
-          <RefreshCw size={15} />
-          Actualizar
-        </Button>
-      </div>
+      <section className="integration-hero">
+        <div>
+          <div className="integration-eyebrow"><Zap size={15} /> ECOSISTEMA PABLO OS</div>
+          <h2>Tus herramientas, una sola conversación.</h2>
+          <p>Convierte correo, calendario, archivos y aplicaciones en acciones útiles. PABLO OS consulta primero y siempre pide aprobación antes de realizar cambios externos.</p>
+        </div>
+        <div className="integration-stats">
+          <div><strong>{privateConnections}</strong><span>conexiones privadas</span></div>
+          <div><strong>18</strong><span>acciones disponibles</span></div>
+        </div>
+      </section>
       {error && (
         <p role="alert" className="error">
           {error}
@@ -144,38 +273,55 @@ export function IntegrationsPanel() {
           Reintenta la conexión con el servidor.
         </Blank>
       ) : (
-        <div className="cards">
-          {items.map((item) => (
-            <article className="panel integration" key={item.id || item.name}>
-              <div className="row between">
-                <span className="agent-mark">
-                  <Link2 size={20} />
-                </span>
-                <Badge value={item.status} />
-              </div>
-              <h2>{item.name}</h2>
-              <p>{item.detail}</p>
-              {configFields[providerId(item)] && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSelected(item);
-                    setValues(
-                      Object.fromEntries(
-                        Object.entries(item.config || {}).map(
-                          ([key, value]) => [key, String(value)],
-                        ),
-                      ),
-                    );
-                    setDisconnect(false);
-                  }}
-                >
-                  {item.configured ? "Gestionar conexión" : "Configurar"}
-                </Button>
-              )}
-            </article>
-          ))}
-        </div>
+        <>
+          <div className="integration-section-heading">
+            <div><span>EMPIEZA AQUÍ</span><h2>Usos listos para ti</h2><p>Elige una receta. PABLO OS abrirá Command, consultará las fuentes necesarias y te mostrará el resultado.</p></div>
+          </div>
+          <div className="recipe-grid">
+            {recipes.map((recipe) => {
+              const Icon = recipe.icon;
+              const available = isUsable(recipe.provider);
+              const provider = items.find((item) => providerId(item) === recipe.provider);
+              return (
+                <article className={`recipe-card ${available ? "available" : "locked"}`} key={recipe.title}>
+                  <div className="recipe-top"><span><Icon size={19} /></span>{available && <em><CheckCircle2 size={13} /> Disponible</em>}</div>
+                  <h3>{recipe.title}</h3>
+                  <p>{recipe.description}</p>
+                  <Button
+                    variant={available ? "default" : "outline"}
+                    onClick={() => available ? onPrompt(recipe.prompt) : provider && manage(provider)}
+                  >
+                    {available ? "Usar ahora" : "Conectar para usar"}<ArrowUpRight size={15} />
+                  </Button>
+                </article>
+              );
+            })}
+          </div>
+          <div className="integration-section-heading connections-heading">
+            <div><span>TUS CONEXIONES</span><h2>Servicios y capacidades</h2><p>Consulta exactamente qué aporta cada servicio y gestiona sus credenciales privadas.</p></div>
+            <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw size={15} />Actualizar estados</Button>
+          </div>
+          <div className="integration-grid">
+            {items.map((item) => {
+              const provider = providerId(item) as keyof typeof providerDetails;
+              const detail = providerDetails[provider];
+              const Icon = detail?.icon || Link2;
+              return (
+                <article className="panel integration-card" key={item.id || item.name}>
+                  <div className="row between">
+                    <span className={`integration-mark integration-${detail?.color || "sky"}`}><Icon size={21} /></span>
+                    <Badge value={item.status} />
+                  </div>
+                  <h2>{item.name}</h2>
+                  <p>{item.detail}</p>
+                  <ul>{(detail?.capabilities || []).map((capability) => <li key={capability}><CheckCircle2 size={14} />{capability}</li>)}</ul>
+                  {provider === "google" && item.scopes && item.scopes.length > 0 && <small className="verified-note"><CheckCircle2 size={13} /> Permisos de Google verificados</small>}
+                  {configFields[provider] && <Button variant="outline" onClick={() => manage(item)}>{item.configured ? "Gestionar" : "Configurar"}<ArrowUpRight size={15} /></Button>}
+                </article>
+              );
+            })}
+          </div>
+        </>
       )}
       <Dialog
         open={!!selected}

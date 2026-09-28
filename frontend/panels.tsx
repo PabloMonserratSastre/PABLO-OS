@@ -124,8 +124,10 @@ export function SettingsPanel({
 }
 export function RemotePanel({
   view,
+  onPrompt,
 }: {
   view: string;
+  onPrompt: (prompt: string) => void;
 }) {
   const [activity, setActivity] = useState<Activity[]>([]);
   const [error, setError] = useState("");
@@ -155,7 +157,7 @@ export function RemotePanel({
         {error}
       </p>
     );
-  if (view === "Integraciones") return <IntegrationsPanel />;
+  if (view === "Integraciones") return <IntegrationsPanel onPrompt={onPrompt} />;
   if (loading)
     return (
       <p role="status" className="muted">
