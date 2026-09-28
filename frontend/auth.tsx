@@ -100,7 +100,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
           Tú decides qué proveedor conectar.
         </div>
       </div>
-      <p className="login-bottom">PABLO OS · v0.2.2 · LOCAL FIRST</p>
+      <p className="login-bottom">PABLO OS · v0.4 · PRIVADO Y SINCRONIZADO</p>
     </main>
   );
 }

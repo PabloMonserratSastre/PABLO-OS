@@ -77,6 +77,7 @@ import { Dictation, ReadAloud } from "./voice";
 import { ToolsPanel } from "./tools";
 import { WorkspaceFiles } from "./workspace-files";
 import { DailySummary } from "./daily-summary";
+import { Pulse } from "./pulse";
 const navigation = [
   ["Inicio", Home],
   ["Command", Terminal],
@@ -122,6 +123,7 @@ export default function Pablo() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState(false);
+  const [online, setOnline] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [reindexing, setReindexing] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -158,6 +160,16 @@ export default function Pablo() {
       });
     return () => {
       live = false;
+    };
+  }, []);
+  useEffect(() => {
+    const updateConnection = () => setOnline(navigator.onLine);
+    updateConnection();
+    window.addEventListener("online", updateConnection);
+    window.addEventListener("offline", updateConnection);
+    return () => {
+      window.removeEventListener("online", updateConnection);
+      window.removeEventListener("offline", updateConnection);
     };
   }, []);
   useEffect(() => {
@@ -529,8 +541,10 @@ export default function Pablo() {
             <strong>{view}</strong>
           </div>
           <div className="row">
-            <span className="runtime-badge">
-              {state.profile.demo
+            <span className={`runtime-badge ${online ? "" : "offline"}`}>
+              {!online
+                ? "Sin conexión"
+                : state.profile.demo
                 ? "MOCK · modo demo"
                 : state.ai.configured
                   ? "Proveedor configurado"
@@ -639,6 +653,12 @@ export default function Pablo() {
           </div>
           {view === "Inicio" && (
             <>
+              <Pulse
+                pulse={state.pulse}
+                busy={busy}
+                onPrompt={(prompt) => void send(prompt)}
+                onNavigate={navigate}
+              />
               <DailySummary run={state.daily_summary} onRun={(id) => void openRun(id)} />
               <div className="home-composer">
                 {composer}

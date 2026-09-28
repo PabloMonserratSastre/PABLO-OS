@@ -51,6 +51,26 @@ export type Approval = {
   payload: Record<string, unknown>;
   status: string;
 };
+export type PulseSignal = {
+  kind: string;
+  title: string;
+  detail: string;
+  destination?: string;
+};
+export type Pulse = {
+  generated_at: string;
+  score: number;
+  label: string;
+  tone: "calm" | "focus" | "attention";
+  greeting: string;
+  headline: string;
+  pending: number;
+  overdue: number;
+  due_today: number;
+  next_action: { title: string; detail: string; destination?: string; prompt?: string };
+  signals: PulseSignal[];
+  organize_prompt: string;
+};
 export type State = {
   daily_summary?: Run | null;
   truncated?: boolean;
@@ -58,6 +78,7 @@ export type State = {
   items: RecordItem[];
   runs: Run[];
   approvals: Approval[];
+  pulse: Pulse;
   ai: { configured: boolean; model: string; embeddings: boolean };
 };
 export type Agent = {

@@ -106,7 +106,7 @@ try {
   await phonePage.getByRole('heading',{name:'Hola, Pablo QA.'}).waitFor();
   const syncedTask=await context.request.post(base+'/api/v1/items/tasks',{headers:{'X-Pablo-Request':'1'},data:{title:'Sincronización desde ordenador',priority:'HIGH'}});
   if(!syncedTask.ok())throw new Error('Desktop task creation failed');
-  await phonePage.getByText('Sincronización desde ordenador',{exact:true}).waitFor({timeout:25000});
+  await phonePage.getByRole('button',{name:'Sincronización desde ordenador',exact:true}).first().waitFor({timeout:25000});
   await phonePage.screenshot({path:resolve('docs/screenshots/iphone-home.png'),fullPage:true});
   const mobileTask=await phone.request.post(base+'/api/v1/items/tasks',{headers:{'X-Pablo-Request':'1'},data:{title:'Sincronización desde móvil',priority:'HIGH'}});
   if(!mobileTask.ok())throw new Error('Mobile task creation failed');

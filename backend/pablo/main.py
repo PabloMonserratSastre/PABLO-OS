@@ -31,14 +31,17 @@ from .db import (
 )
 from .integrations import router as integrations_router
 from .knowledge import extract_isolated, index, prepare_vectors, search
+from .pulse import build_pulse
 from .scheduling import create_execution, parse_instant
 from .schemas import Command, Credentials, Decision, Enabled, Record, ScheduledCommand, Settings
 from .security import allowed_origin, digest, new_session, password_hash, require_user, verify
 from .tools import AGENTS, registry
 from .worker import TERMINAL
 
-app = FastAPI(title="PABLO OS", version="0.3.0", docs_url="/api/docs", openapi_url="/api/openapi.json")
+app = FastAPI(title="PABLO OS", version="0.4.0", docs_url="/api/docs", openapi_url="/api/openapi.json")
 attempts = defaultdict(deque)
+AUTH_WINDOW_SECONDS = 300
+AUTH_FAILURE_LIMIT = 8
 KIND = {"projects", "tasks", "memory", "documents", "artifacts", "conversations", "messages", "workflows"}
 EDITABLE = {"projects", "tasks", "memory", "workflows"}
 
@@ -102,14 +105,6 @@ async def safeguards(request: Request, call_next):
             if len(buffered) > limit:
                 return Response("Petición demasiado grande", status_code=413)
         request._body = bytes(buffered)
-        if request.url.path.startswith("/api/v1/auth/"):
-            key = request.client.host if request.client else "local"
-            q = attempts[key]
-            while q and q[0] < time.time() - 300:
-                q.popleft()
-            if len(q) >= 15:
-                return Response("Demasiados intentos. Espera cinco minutos.", status_code=429)
-            q.append(time.time())
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers.setdefault("Referrer-Policy", "same-origin")
@@ -142,7 +137,7 @@ def ready():
         "database": "ready",
         "dialect": engine.dialect.name,
         "application": "pablo-os",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "installation": os.getenv("PABLO_INSTALLATION_ID", ""),
     }
 
@@ -178,11 +173,20 @@ def setup(body: Credentials, response: Response):
 
 
 @app.post("/api/v1/auth/login")
-def login(body: Credentials, response: Response):
+def login(body: Credentials, response: Response, request: Request):
+    key = request.client.host if request.client else "local"
+    failures = attempts[key]
+    cutoff = time.time() - AUTH_WINDOW_SECONDS
+    while failures and failures[0] < cutoff:
+        failures.popleft()
+    if len(failures) >= AUTH_FAILURE_LIMIT:
+        raise HTTPException(429, "Demasiados intentos fallidos. Espera cinco minutos.")
     with DB() as db:
         owner = db.get(Owner, 1)
         if not owner or not verify(body.password, owner.password):
+            failures.append(time.time())
             raise HTTPException(401, "Contraseña incorrecta.")
+        attempts.pop(key, None)
         new_session(db, response)
     return {"ok": True}
 
@@ -217,16 +221,26 @@ def state():
         visible_runs = sorted(
             {r.id: r for r in active_runs + recent_runs}.values(), key=lambda r: r.created_at, reverse=True
         )
+        serialized_items = [item_json(r) for r in rows]
+        serialized_runs = [run_json(r) for r in visible_runs]
+        pending_approvals = [
+            {"id": a.id, "run_id": a.run_id, "tool": a.tool, "payload": a.payload, "status": a.status}
+            for a in db.scalars(select(Approval).where(Approval.status == "PENDING"))
+        ]
         return {
             "truncated": truncated,
             "daily_summary": (lambda r: run_json(r) if r else None)(db.scalar(select(Run).where(Run.goal == "Preparar mi resumen diario").order_by(Run.created_at.desc()).limit(1))),
             "profile": owner.settings | {"name": owner.name},
-            "items": [item_json(r) for r in rows],
-            "runs": [run_json(r) for r in visible_runs],
-            "approvals": [
-                {"id": a.id, "run_id": a.run_id, "tool": a.tool, "payload": a.payload, "status": a.status}
-                for a in db.scalars(select(Approval).where(Approval.status == "PENDING"))
-            ],
+            "items": serialized_items,
+            "runs": serialized_runs,
+            "approvals": pending_approvals,
+            "pulse": build_pulse(
+                serialized_items,
+                serialized_runs,
+                len(pending_approvals),
+                owner.settings.get("timezone", "Europe/Madrid"),
+                owner.name,
+            ),
             "ai": {
                 "configured": bool(config["api_key"] and config["model"]),
                 "model": config["model"],

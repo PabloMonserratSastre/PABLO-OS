@@ -35,6 +35,14 @@ def test_authentication_and_csrf(client):
     assert client.post("/api/v1/auth/login", json={"password": "Wrong-password-123"}).status_code == 401
 
 
+def test_login_rate_limit_counts_only_failures(client):
+    for _ in range(20):
+        assert client.post("/api/v1/auth/login", json={"password": "Temporary-test-pass-2026"}).status_code == 200
+    for _ in range(8):
+        assert client.post("/api/v1/auth/login", json={"password": "Wrong-password-123"}).status_code == 401
+    assert client.post("/api/v1/auth/login", json={"password": "Wrong-password-123"}).status_code == 429
+
+
 def test_project_and_optimistic_concurrency(client):
     p = client.post("/api/v1/items/projects", json={"title": "Voxel", "status": "ACTIVE"}).json()
     data = {"title": "Updated", "status": "ACTIVE", "version": p["version"]}
