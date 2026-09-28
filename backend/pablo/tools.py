@@ -101,13 +101,16 @@ def memory_search(db, args, project_id):
 
 
 def github_inspect(db, args, project_id):
-    repo = str(args.get("repository", ""))
+    repo = str(args.get("repository", "")).strip()
+    repo = re.sub(r"^https?://github\.com/", "", repo, flags=re.I).removesuffix(".git").strip("/")
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         raise ValueError("Escribe el repositorio como propietario/nombre.")
-    headers = {"Accept": "application/vnd.github+json", "User-Agent": "PabloOS"}
-    if os.getenv("GITHUB_TOKEN"):
-        headers["Authorization"] = "Bearer " + os.environ["GITHUB_TOKEN"]
-    with httpx.Client(timeout=20, follow_redirects=False) as client:
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "PABLO-OS/0.4"}
+    from .integrations import credentials
+    token = credentials(db, "github").get("token") or os.getenv("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    with httpx.Client(timeout=20, follow_redirects=False, trust_env=False) as client:
         response = client.get("https://api.github.com/repos/" + repo, headers=headers)
         if not response.is_success:
             raise ValueError(

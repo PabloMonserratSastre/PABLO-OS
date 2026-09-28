@@ -448,8 +448,21 @@ def web_search(db, args, project_id):
         data = _request("GET", "https://api.search.brave.com/res/v1/web/search", headers={"X-Subscription-Token": key, "Accept": "application/json"}, params={"q": query, "count": count})
         results = [{"title": r.get("title"), "url": r.get("url"), "snippet": r.get("description", "")} for r in data.get("web", {}).get("results", [])]
         return {"provider": "Brave Search", "query": query, "results": results}
-    data = _request("GET", "https://es.wikipedia.org/w/api.php", headers={"User-Agent": "PabloOS/1.0 (local knowledge search)"}, params={"action": "query", "list": "search", "srsearch": query, "srlimit": count, "format": "json"})
-    return {"provider": "Wikipedia (búsqueda enciclopédica)", "query": query, "scope": "Solo Wikipedia; configura Brave Search para buscar en toda la web.", "results": [{"title": r["title"], "url": "https://es.wikipedia.org/?curid=" + str(r["pageid"]), "snippet": re.sub(r"<[^>]+>", "", r.get("snippet", ""))} for r in data.get("query", {}).get("search", [])]}
+    headers = {
+        "User-Agent": "PABLO-OS/0.4 (https://pablo-os.onrender.com)",
+        "Api-User-Agent": "PABLO-OS/0.4 (https://pablo-os.onrender.com)",
+    }
+    try:
+        data = _request("GET", "https://es.wikipedia.org/w/api.php", headers=headers, params={"action": "query", "list": "search", "srsearch": query, "srlimit": count, "format": "json"})
+        results = [{"title": r["title"], "url": "https://es.wikipedia.org/?curid=" + str(r["pageid"]), "snippet": re.sub(r"<[^>]+>", "", r.get("snippet", ""))} for r in data.get("query", {}).get("search", [])]
+    except ValueError:
+        data = _request("GET", "https://es.wikipedia.org/w/rest.php/v1/search/page", headers=headers, params={"q": query, "limit": count})
+        results = [{
+            "title": r.get("title", ""),
+            "url": "https://es.wikipedia.org/wiki/" + quote(str(r.get("key", "")), safe=""),
+            "snippet": re.sub(r"<[^>]+>", "", r.get("excerpt") or r.get("description") or ""),
+        } for r in data.get("pages", [])]
+    return {"provider": "Wikipedia (búsqueda enciclopédica)", "query": query, "scope": "Solo Wikipedia; conecta Brave Search para consultar toda la web.", "results": results}
 
 
 def drive_list(db, args, project_id):

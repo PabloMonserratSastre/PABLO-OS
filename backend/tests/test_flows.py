@@ -556,6 +556,24 @@ def test_user_facing_results_are_grounded_in_tool_output():
     assert "```json" not in text
 
 
+def test_connected_service_results_are_readable_and_hide_raw_json():
+    from pablo.presentation import render_results
+
+    text = render_results([
+        {"tool": "github.inspect", "result": {
+            "repository": "owner/repo", "description": "Una aplicación", "language": "Python",
+            "default_branch": "main", "open_issues": 2, "url": "https://github.com/owner/repo",
+            "readme": "<p><strong>Inicio</strong></p> [Documentación](https://example.com)",
+        }},
+        {"tool": "email.read", "result": {
+            "headers": {"subject": "Entrega", "from": "Profesor", "date": "hoy"}, "text": "Revisa el trabajo.",
+        }},
+    ])
+    assert "owner/repo" in text and "Incidencias abiertas: 2" in text
+    assert "Asunto: Entrega" in text and "Revisa el trabajo" in text
+    assert "<p>" not in text and "```json" not in text and "resultado registrado" not in text
+
+
 def test_old_pending_run_remains_visible(client):
     r = client.post("/api/v1/commands", json={"goal": "Crear proyecto", "mode": "DO"}).json()
     run_until_pause(r["id"])

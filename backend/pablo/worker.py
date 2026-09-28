@@ -145,18 +145,12 @@ def tick(run_id: str):
         pending = next(((i, step) for i, step in enumerate(steps) if step["status"] != "DONE"), None)
         if pending is None:
             outputs = render_results(steps)
-            if (steps and run.usage.get("synthesis") and not all(s["tool"] in {"daily.summary", "tasks.list", "projects.list", "email.list", "google_calendar.list"} for s in steps) and not owner.settings.get("demo", False)
-                    and all(registry.get(s["tool"]).risk == "SAFE" for s in steps)):
-                try:
-                    response, usage = CompatibleProvider().answer(run.goal, [{"tool": s["tool"], "result": s["result"]} for s in steps])
-                    outputs += "\n\n**Síntesis IA**\n" + response
-                    run.usage = run.usage | {"total_tokens": run.usage.get("total_tokens", 0) + usage.get("total_tokens", 0)}
-                except Exception:
-                    outputs += "\n\nNo se pudo generar la síntesis IA; se conservan los resultados registrados."
-                db.refresh(run, attribute_names=["status"])
-                if run.status == "CANCELLED":
-                    return
-            finish(db, run, "COMPLETED", run.result + "\n\n" + outputs)
+            # Connected services can contain private mail, calendar and files.
+            # Present those results locally instead of forwarding them to an AI
+            # provider for a second pass. The execution details retain the raw
+            # checkpoint for diagnostics; the conversation gets a clean answer.
+            final = outputs or run.result
+            finish(db, run, "COMPLETED", final)
             db.commit()
             return
         index, step = pending

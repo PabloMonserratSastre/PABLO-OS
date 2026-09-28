@@ -95,7 +95,7 @@ const providerDetails = {
   search: {
     icon: Globe2,
     color: "amber",
-    capabilities: ["Investigar temas actuales", "Consultar fuentes", "Preparar informes"],
+    capabilities: ["Consultar Wikipedia sin clave", "Buscar en toda la web con Brave", "Mostrar enlaces a las fuentes"],
   },
   n8n: {
     icon: Workflow,
@@ -131,42 +131,39 @@ const recipes = [
     description: "Busca en Drive por significado y resume el archivo correcto.",
     provider: "google",
     icon: Cloud,
-    prompt: "Quiero encontrar un documento en Google Drive. Pregúntame qué recuerdo de él, búscalo y, cuando lo identifiques, resume su contenido sin modificarlo.",
+    input: { label: "¿Qué documento buscas?", placeholder: "Ej.: presupuesto de vacaciones o apuntes de redes" },
+    prompt: "Busca en Google Drive un documento relacionado con: {{input}}. Muéstrame los archivos que coincidan y resume el más relevante si puedes leerlo. No modifiques nada.",
   },
   {
     title: "Revisión semanal",
     description: "Une agenda y correo para cerrar la semana con perspectiva.",
     provider: "google",
     icon: CheckCircle2,
-    prompt: "Prepara mi revisión semanal: consulta los eventos de los últimos 7 días en Google Calendar y mis correos relevantes de ese periodo. Resume compromisos, asuntos pendientes y próximos pasos. No envíes ni cambies nada.",
+    prompt: "Prepara mi revisión semanal: consulta los eventos de los últimos 7 días en Google Calendar y mis correos relevantes de ese periodo. Muéstrame compromisos, asuntos pendientes y próximos pasos de forma breve. No guardes un informe, no envíes ni cambies nada.",
   },
   {
     title: "Entender un repositorio",
     description: "Explora un proyecto y explica su estructura sin cambiar código.",
     provider: "github",
     icon: GitBranch,
-    prompt: "Quiero entender un repositorio de GitHub. Pregúntame cuál es, explora su estructura y explícame para qué sirve, cómo se organiza y cuáles son sus posibles riesgos. No modifiques nada.",
+    input: { label: "Repositorio de GitHub", placeholder: "propietario/nombre o URL de GitHub" },
+    prompt: "Analiza el repositorio de GitHub {{input}}. Consulta sus metadatos y README y explícame para qué sirve, cuál es su lenguaje principal y qué limitaciones tiene este análisis. No modifiques nada.",
   },
   {
     title: "Consultar mi conocimiento",
     description: "Encuentra información entre las páginas compartidas de Notion.",
     provider: "notion",
     icon: BookOpen,
-    prompt: "Quiero buscar información en mi Notion. Pregúntame qué necesito encontrar, consulta las páginas compartidas y responde con una síntesis clara. No crees ni modifiques páginas.",
+    input: { label: "¿Qué quieres encontrar en Notion?", placeholder: "Ej.: plan del proyecto o notas de la reunión" },
+    prompt: "Busca en las páginas compartidas de Notion información relacionada con: {{input}}. Muéstrame las páginas encontradas. No crees ni modifiques páginas.",
   },
   {
-    title: "Investigar con fuentes",
-    description: "Busca información actual y devuelve una respuesta contrastada.",
+    title: "Consultar información",
+    description: "Busca fuentes públicas y muestra resultados con enlaces.",
     provider: "search",
     icon: Globe2,
-    prompt: "Quiero investigar un tema con información actual. Pregúntame cuál es, busca fuentes fiables y dame una síntesis breve con los enlaces utilizados.",
-  },
-  {
-    title: "Automatizar una rutina",
-    description: "Diseña una automatización conectable con cientos de servicios.",
-    provider: "n8n",
-    icon: Zap,
-    prompt: "Quiero automatizar una rutina con n8n. Pregúntame qué quiero que ocurra, cuándo debe ocurrir y qué aplicaciones participan. Después prepara una propuesta segura antes de ejecutar ningún webhook.",
+    input: { label: "Tema que quieres consultar", placeholder: "Ej.: qué es n8n o historia de la inteligencia artificial" },
+    prompt: "Busca información pública sobre: {{input}}. Devuélveme los resultados más relevantes con una breve descripción y sus enlaces. No guardes ningún informe.",
   },
 ] as const;
 function providerId(item: Integration) {
@@ -195,6 +192,8 @@ export function IntegrationsPanel({ onPrompt }: { onPrompt: (prompt: string) => 
   const [services, setServices] = useState(["calendar", "gmail", "drive"]);
   const [busy, setBusy] = useState(false);
   const [disconnect, setDisconnect] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState<(typeof recipes)[number] | null>(null);
+  const [recipeValue, setRecipeValue] = useState("");
   const load = useCallback(async () => {
     try {
       setItems(await api<Integration[]>("/integrations"));
@@ -289,7 +288,13 @@ export function IntegrationsPanel({ onPrompt }: { onPrompt: (prompt: string) => 
                   <p>{recipe.description}</p>
                   <Button
                     variant={available ? "default" : "outline"}
-                    onClick={() => available ? onPrompt(recipe.prompt) : provider && manage(provider)}
+                    onClick={() => {
+                      if (!available) return provider && manage(provider);
+                      if ("input" in recipe) {
+                        setSelectedRecipe(recipe);
+                        setRecipeValue("");
+                      } else onPrompt(recipe.prompt);
+                    }}
                   >
                     {available ? "Usar ahora" : "Conectar para usar"}<ArrowUpRight size={15} />
                   </Button>
@@ -323,6 +328,47 @@ export function IntegrationsPanel({ onPrompt }: { onPrompt: (prompt: string) => 
           </div>
         </>
       )}
+      <Dialog
+        open={!!selectedRecipe}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedRecipe(null);
+            setRecipeValue("");
+          }
+        }}
+      >
+        <DialogContent className="editor-dialog">
+          <DialogHeader>
+            <DialogTitle>{selectedRecipe?.title}</DialogTitle>
+            <DialogDescription>{selectedRecipe?.description}</DialogDescription>
+          </DialogHeader>
+          {selectedRecipe && "input" in selectedRecipe && (
+            <form
+              className="form-stack"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const value = recipeValue.trim();
+                if (!value) return;
+                onPrompt(selectedRecipe.prompt.replace("{{input}}", value));
+                setSelectedRecipe(null);
+                setRecipeValue("");
+              }}
+            >
+              <label>
+                {selectedRecipe.input.label}
+                <Input
+                  autoFocus
+                  required
+                  value={recipeValue}
+                  placeholder={selectedRecipe.input.placeholder}
+                  onChange={(event) => setRecipeValue(event.target.value)}
+                />
+              </label>
+              <Button disabled={!recipeValue.trim()}>Continuar en Command</Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={!!selected}
         onOpenChange={(open) => {

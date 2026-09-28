@@ -304,6 +304,26 @@ def test_web_search_has_honest_fallback_and_brave_results(database, remote):
     assert requests[-1].headers["X-Subscription-Token"] == "brave-key"
 
 
+def test_web_search_uses_wikipedia_rest_when_legacy_endpoint_is_blocked(database, remote):
+    def handler(request):
+        if request.url.path == "/w/api.php":
+            return httpx.Response(403, text="blocked")
+        assert request.url.path == "/w/rest.php/v1/search/page"
+        return httpx.Response(200, json={"pages": [{
+            "title": "n8n", "key": "N8n", "excerpt": "Automatización de <span>flujos</span>",
+        }]})
+
+    requests = remote(handler)
+    result = module.web_search(database, {"query": "n8n"}, None)
+    assert len(requests) == 2
+    assert result["results"] == [{
+        "title": "n8n",
+        "url": "https://es.wikipedia.org/wiki/N8n",
+        "snippet": "Automatización de flujos",
+    }]
+    assert requests[-1].headers["Api-User-Agent"].startswith("PABLO-OS/")
+
+
 def test_drive_exports_docs_and_escapes_search_query(database, remote):
     google_credentials(database)
     def handler(request):

@@ -89,6 +89,11 @@ try {
   await page.getByRole('heading',{name:'Usos listos para ti',exact:true}).waitFor();
   await page.getByRole('button',{name:/Usar ahora/}).first().waitFor();
   await page.getByRole('heading',{name:'GitHub',exact:true}).waitFor();
+  const githubRecipe=page.locator('.recipe-card').filter({has:page.getByRole('heading',{name:'Entender un repositorio',exact:true})});
+  await githubRecipe.getByRole('button',{name:'Usar ahora',exact:true}).click();
+  await page.getByLabel('Repositorio de GitHub',{exact:true}).waitFor();
+  await page.getByLabel('Repositorio de GitHub',{exact:true}).fill('delta-io/delta-rs');
+  await page.keyboard.press('Escape');
   await page.screenshot({path:resolve('docs/screenshots/integraciones.png'),fullPage:true});
   await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:resolve('docs/screenshots/integraciones-movil.png'),fullPage:true});
