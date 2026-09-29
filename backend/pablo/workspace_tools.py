@@ -5,7 +5,6 @@ code.run executes user-approved code with the worker account's OS permissions.
 """
 
 import csv
-from contextvars import ContextVar
 import hashlib
 import html
 import io
@@ -21,6 +20,7 @@ import tempfile
 import threading
 import time
 import unicodedata
+from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 from pathlib import Path, PureWindowsPath
 

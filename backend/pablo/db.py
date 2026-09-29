@@ -4,7 +4,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, Float, Integer, String, Text, LargeBinary, create_engine, event
+from sqlalchemy import JSON, Boolean, Float, Integer, LargeBinary, String, Text, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 

@@ -3,7 +3,6 @@
 from datetime import date, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-
 OPEN_TASKS = {"TODO", "PLANNED", "IN_PROGRESS", "WAITING_APPROVAL", "BLOCKED", "TESTING"}
 
 

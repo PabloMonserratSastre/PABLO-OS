@@ -313,8 +313,9 @@ def main():
     cloud_lock = None
     if os.getenv("PABLO_CLOUD") == "true":
         from sqlalchemy import text
-        from .db import engine
+
         from .cloud_workspace import restore
+        from .db import engine
         # Rolling deployments can overlap: only one worker may write files or run schedules.
         cloud_lock = engine.connect()
         while not cloud_lock.scalar(text("SELECT pg_try_advisory_lock(73482191)")):

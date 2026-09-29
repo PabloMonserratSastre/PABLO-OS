@@ -66,6 +66,7 @@ def extract_pdf(data):
 
 def timetable_answer(db, goal, history, project_id=None, today=None):
     from sqlalchemy import select
+
     from .db import Chunk, Item
     query = normalized(goal)
     user_history = [normalized(row.get('content', '')) for row in history if row.get('role') == 'user']

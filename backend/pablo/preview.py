@@ -47,7 +47,8 @@ def preview_html(file):
                 return
             self.parts.append('</' + tag + '>')
         def handle_data(self, data):
-            if not self.skip_script: self.parts.append(data)
+            if not self.skip_script:
+                self.parts.append(data)
         def handle_entityref(self, name): self.parts.append('&' + name + ';')
         def handle_charref(self, name): self.parts.append('&#' + name + ';')
         def handle_decl(self, decl): self.parts.append('<!' + decl + '>')

@@ -1,5 +1,6 @@
 import os
 import tempfile
+
 from cryptography.fernet import Fernet
 
 # Tests must never depend on or modify the real Windows credential vault.

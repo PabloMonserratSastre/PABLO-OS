@@ -1,7 +1,8 @@
 from datetime import datetime
-from pablo.daily_digest import digest, GOAL
-from pablo.db import DB
+
 from pablo.commands import explicit_plan
+from pablo.daily_digest import GOAL, digest
+from pablo.db import DB
 
 
 def test_daily_digest_short_verified_output(client, monkeypatch):
@@ -29,6 +30,7 @@ def test_daily_digest_short_verified_output(client, monkeypatch):
 
 def test_daily_digest_does_not_hide_connection_failure(client, monkeypatch):
     import pytest
+
     from pablo import integrations
     def fail(*args):
         raise ValueError("Conecta Google")

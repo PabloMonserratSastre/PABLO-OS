@@ -3,8 +3,11 @@ import hashlib
 import os
 import tempfile
 from functools import wraps
+
 from sqlalchemy import select
+
 from .db import WorkspaceFile
+
 MAX_TOTAL = 50_000_000
 MAX_FILES = 500
 MAX_FILE = 5_000_000
@@ -16,8 +19,8 @@ def cloud_view(function):
     def wrapped(*args, **kwargs):
         if os.getenv("PABLO_CLOUD") != "true":
             return function(*args, **kwargs)
-        from .workspace_tools import workspace_override
         from .db import DB
+        from .workspace_tools import workspace_override
         with tempfile.TemporaryDirectory(prefix="pablo-view-") as folder:
             token = workspace_override.set(folder)
             try:
@@ -30,7 +33,7 @@ def cloud_view(function):
 
 
 def snapshot(db):
-    from .workspace_tools import workspace_root, _walk, _relative
+    from .workspace_tools import _relative, _walk, workspace_root
     files = {}
     total = 0
     for path in _walk(workspace_root(), limit=MAX_FILES + 1):

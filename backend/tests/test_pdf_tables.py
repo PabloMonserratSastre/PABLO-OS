@@ -1,11 +1,13 @@
 import json
+
 import pytest
 from sqlalchemy import select
+from test_flows import run_until_pause
+
 from pablo.db import DB, Chunk, Item
 from pablo.knowledge import index, restore_text
 from pablo.pdf_tables import MARKER, RECORD, table_blocks, timetable_answer
 from pablo.providers import CompatibleProvider
-from test_flows import run_until_pause
 
 
 def timetable():
@@ -20,7 +22,8 @@ def timetable():
 def document(client):
     with DB() as db:
         doc = Item(kind='documents', title='Horario de prueba.pdf', data={'project_id': None})
-        db.add(doc); db.flush()
+        db.add(doc)
+        db.flush()
         index(db, doc.id, timetable())
         db.commit()
         return doc.id

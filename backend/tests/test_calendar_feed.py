@@ -1,6 +1,5 @@
 from pablo import integrations
 
-
 URL = "/api/v1/integrations/google/calendar-events?start=2026-09-01T00:00:00Z&end=2026-10-13T00:00:00Z"
 
 

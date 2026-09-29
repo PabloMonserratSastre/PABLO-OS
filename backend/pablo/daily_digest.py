@@ -1,8 +1,8 @@
 """A concise digest from verified Google data, with local-day boundaries."""
+import re
 from datetime import datetime, time, timedelta
 from email.utils import parseaddr
 from zoneinfo import ZoneInfo
-import re
 
 GOAL = "Preparar mi resumen diario"
 
@@ -15,7 +15,7 @@ def clean(value, limit=95):
 
 def digest(db, args, project_id):
     from .db import Owner
-    from .integrations import email_list, _google
+    from .integrations import _google, email_list
     owner = db.get(Owner, 1)
     zone = ZoneInfo(owner.settings.get("timezone", "Europe/Madrid"))
     today = datetime.now(zone).date()

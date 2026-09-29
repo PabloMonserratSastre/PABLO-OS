@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import time
+
 from .cloud_config import configure
 
 
@@ -13,7 +14,8 @@ def main():
     from alembic import command
     from alembic.config import Config
     from sqlalchemy import text
-    from .db import engine, DB, Owner
+
+    from .db import DB, Owner, engine
     from .schemas import Settings
     from .security import password_hash
 

@@ -1,8 +1,9 @@
+import pytest
+
 from pablo.commands import explicit_plan
 from pablo.db import DB, Item, Run
-from pablo.worker import process
 from pablo.providers import CompatibleProvider
-import pytest
+from pablo.worker import process
 
 
 @pytest.mark.parametrize("goal", ["dime las tareas y proyectos que tengo pendientes", "muestra mis proyectos y tareas pendientes"])
@@ -16,7 +17,8 @@ def test_pending_overview_without_selected_project(client, monkeypatch, goal):
         db.add(Item(kind="tasks", title="Tarea pendiente", data={"status":"TODO"}))
         db.commit()
     run = client.post('/api/v1/commands', json={"goal":goal,"mode":"CHAT"}).json()
-    for _ in range(5): process(run['id'])
+    for _ in range(5):
+        process(run['id'])
     with DB() as db:
         row=db.get(Run,run['id'])
         assert row.status == 'COMPLETED'

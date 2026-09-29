@@ -1,11 +1,12 @@
 import hashlib
 import json
 from pathlib import Path
+
 import pytest
-from sqlalchemy import select
-from pablo.db import DB, WorkspaceFile
-from pablo.cloud_workspace import snapshot, restore
+
 from pablo.cloud_config import configure
+from pablo.cloud_workspace import restore, snapshot
+from pablo.db import DB, WorkspaceFile
 
 
 def test_restart_restores_two_websites(client, tmp_path, monkeypatch):
@@ -90,8 +91,9 @@ def test_cloud_config_requires_https_and_stable_key(monkeypatch):
     for key in ("PABLO_CLOUD", "COOKIE_SECURE", "PABLO_SECRET_KEY"):
         monkeypatch.setenv(key, "")
     configure()
-    from cryptography.fernet import Fernet
     import os
+
+    from cryptography.fernet import Fernet
     cipher = Fernet(os.environ["PABLO_SECRET_KEY"])
     assert cipher.decrypt(cipher.encrypt(b"secret")) == b"secret"
     assert os.environ["COOKIE_SECURE"] == "true"
@@ -109,10 +111,11 @@ def test_mobile_assets_are_served_as_files(client):
 
 def test_migration_preserves_ids_and_reencrypts_credentials(client, tmp_path, monkeypatch):
     import importlib.util
-    import os
     import sys
-    from sqlalchemy import create_engine, delete
+
     from cryptography.fernet import Fernet
+    from sqlalchemy import create_engine, delete
+
     from pablo.db import Base, Item, Owner
     from pablo.integrations import Integration
     source = tmp_path / "source"

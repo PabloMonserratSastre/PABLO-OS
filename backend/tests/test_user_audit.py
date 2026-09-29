@@ -9,14 +9,13 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import select
+from test_flows import run_until_pause
 
 from pablo.commands import explicit_plan
-from pablo.db import DB, Item, Run
+from pablo.db import DB, Item
 from pablo.providers import CompatibleProvider
 from pablo.tools import Tool, registry
 from pablo.workspace_tools import code_scaffold
-from test_flows import run_until_pause
-
 
 READ_CASES = [
     ("dime mis tareas pendientes", ["tasks.list"]),
@@ -186,8 +185,8 @@ def test_day_ranges_follow_daylight_saving(monkeypatch, day, hours):
 
 @pytest.mark.parametrize("extra", [{}, {"mode": "CHAT"}])
 def test_new_automation_uses_unified_chat(client, extra):
-    from pablo.workspace_tools import automation_create
     from pablo.db import Schedule
+    from pablo.workspace_tools import automation_create
     with DB() as db:
         result = automation_create(db, {"title": "Resumen de prueba", "goal": "dime mis tareas pendientes", "run_at": (datetime.now(ZoneInfo("Europe/Madrid")) + timedelta(days=1)).isoformat(), **extra}, None)
         assert db.get(Schedule, result["id"]).mode == "CHAT"
