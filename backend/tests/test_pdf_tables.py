@@ -26,15 +26,16 @@ def document(client):
         return doc.id
 
 
-@pytest.mark.parametrize('goal', ['qué asignaturas tengo los lunes en el segundo cuatri', 'dime que asignaturas tengo los lunes tabla S2', 'ahora los lunes el segundo cuatrimestre', '¿Qué clases tengo los lunes del 2º cuatrimestre?'])
+@pytest.mark.parametrize('goal', ['qué asignaturas tengo los lunes en el segundo cuatri', 'dime que asignaturas tengo los lunes tabla S2', 'ahora los lunes el segundo cuatrimestre', '¿Qué clases tengo los lunes del 2º cuatrimestre?', 'dime en el periodo S2 que tengo los lunes'])
 def test_second_semester_answer_uses_cells_not_tbd(client, document, monkeypatch, goal):
     monkeypatch.setattr(CompatibleProvider, 'request', lambda *a: pytest.fail('Exact timetable reading must not ask the model to infer columns'))
     row = client.post('/api/v1/commands', json={'goal': goal, 'mode': 'CHAT'}).json()
     run = run_until_pause(row['id'])
     assert run.status == 'COMPLETED', run.result
     assert 'Escritura técnica' in run.result and 'Videojuegos' in run.result
-    assert '15:00 y 16:00' in run.result and '17:00 y 18:00' in run.result
+    assert '15:00–17:00' in run.result and '17:00–19:00' in run.result
     assert 'Sistemas' not in run.result and 'tbd' not in run.result and 'JSON' not in run.result
+    assert '📅' in run.result and '**Fuente:**' in run.result
 
 
 def test_reindex_preserves_structured_cells(client, document):
@@ -59,6 +60,14 @@ def test_missing_semester_and_empty_day(client, document):
     with DB() as db:
         assert '¿Te refieres' in timetable_answer(db, 'que asignaturas tengo los lunes', [])
         assert 'No aparecen asignaturas' in timetable_answer(db, 'que asignaturas tengo los viernes S2', [])
+
+
+def test_whole_period_is_presented_by_day(client, document):
+    with DB() as db:
+        result = timetable_answer(db, 'dime mi horario del periodo S1', [])
+    assert '**Lunes**' in result and '**Martes**' in result
+    assert '15:00–17:00' in result and 'Sistemas' in result
+    assert '[Horario]' not in result
 
 
 def test_header_preamble_does_not_merge_tables():

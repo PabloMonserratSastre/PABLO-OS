@@ -1,5 +1,6 @@
 """User-facing summaries are derived from recorded tool results, not invented statuses."""
 
+import json
 import re
 
 
@@ -45,6 +46,26 @@ def render_results(steps: list[dict]) -> str:
         elif tool == "calendar.list" and isinstance(result, dict):
             sections.append("**Tu calendario local**\n" + ("\n".join(f"• {row.get('title', 'Sin título')} · {row.get('start', '')}" for row in result.get("events", [])) or "No hay eventos locales en el intervalo consultado.") + "\nEsta consulta no incluye Google Calendar.")
         elif tool == "documents.search":
+            schedule_rows = []
+            for row in result or []:
+                text = row.get("text", "")
+                if text.startswith("[Horario] "):
+                    try:
+                        schedule_rows.append((json.loads(text[len("[Horario] "):]), row))
+                    except ValueError:
+                        pass
+            if schedule_rows:
+                lines = ["📅 **Datos encontrados en tu horario**", ""]
+                for data, row in schedule_rows:
+                    room = data.get("cabecera", "").split("-", 1)[1].strip() if "-" in data.get("cabecera", "") else ""
+                    if room.casefold() in {"tbd", "pendiente", "por determinar", "sin aula"}:
+                        room = ""
+                    room_text = f" · Aula {room}" if room else ""
+                    subject = data.get("asignatura") or "Sin clase"
+                    lines.append(f"• **{data.get('dia', '').capitalize()} · {data.get('hora', '')}** — {subject}{room_text}")
+                lines.extend(["", f"**Fuente:** {schedule_rows[0][1].get('source', 'PDF')}"])
+                sections.append("\n".join(lines))
+                continue
             sections.append(
                 "**Fragmentos encontrados**\n"
                 + (

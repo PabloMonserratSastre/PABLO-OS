@@ -1032,7 +1032,9 @@ export default function Pablo() {
                       )}
                       <div className="record-main">
                         <h2>{item.title}</h2>
-                        <p>{item.description || "Sin descripción"}</p>
+                        <p>{view === "Archivos" && item.description?.startsWith("[PDF estructurado v1]")
+                          ? "Horario académico detectado. Puedes preguntar por un día, un periodo o un cuatrimestre."
+                          : item.description || "Sin descripción"}</p>
                         <div className="record-meta">
                           {view === "Tareas" && (
                             <>
@@ -1049,7 +1051,9 @@ export default function Pablo() {
                           )}
                           {view === "Archivos" && (
                             <span>
-                              {item.chunks || 0} fragmentos
+                              {item.description?.startsWith("[PDF estructurado v1]")
+                                ? `${item.chunks || 0} bloques del horario`
+                                : `${item.chunks || 0} fragmentos`}
                               {item.chunks
                                 ? " · indexado"
                                 : " · sin texto indexado"}
