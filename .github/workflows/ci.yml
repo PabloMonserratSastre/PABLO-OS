@@ -21,6 +21,8 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements*.txt
       - run: pip install -r backend/requirements-dev.txt
+      - name: Preparar recursos PWA para las pruebas de API
+        run: mkdir -p dist-local && cp -R public/. dist-local/
       - run: python -m ruff check backend
       - run: python -m pytest backend/tests
 
