@@ -3,12 +3,14 @@ import json
 import re
 import unicodedata
 from collections import Counter
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from io import BytesIO
 
 MARKER = '[PDF estructurado v1]'
 RECORD = '[Horario] '
 DAYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+DISPLAY_DAYS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 SCHEDULE_WORDS = r'asignatura|clase|periodo|cuatri|semestre|tabla s[12]|horario|\bs[12]\b'
 
 
@@ -62,7 +64,7 @@ def extract_pdf(data):
     return MARKER + '\n\n' + '\n\n'.join(blocks)
 
 
-def timetable_answer(db, goal, history, project_id=None):
+def timetable_answer(db, goal, history, project_id=None, today=None):
     from sqlalchemy import select
     from .db import Chunk, Item
     query = normalized(goal)
@@ -70,8 +72,26 @@ def timetable_answer(db, goal, history, project_id=None):
     if re.search(r'\b(crea|crear|borra|elimina|modifica|guarda|envia|anade|programa)\b', query):
         return None
     days = [day for day in DAYS if re.search(r'\b' + day + r'\b', query)]
+    relative_label = None
+    relative_date = None
+    try:
+        base_date = date.fromisoformat(today) if today else date.today()
+    except ValueError:
+        base_date = date.today()
+    if re.search(r'\bpasado manana\b', query):
+        relative_label, relative_date = 'Pasado mañana', base_date + timedelta(days=2)
+    elif re.search(r'\bmanana\b', query):
+        relative_label, relative_date = 'Mañana', base_date + timedelta(days=1)
+    elif re.search(r'\bhoy\b', query):
+        relative_label, relative_date = 'Hoy', base_date
+    elif re.search(r'\bayer\b', query):
+        relative_label, relative_date = 'Ayer', base_date - timedelta(days=1)
+    if relative_date:
+        days = [DAYS[relative_date.weekday()]]
     history_text = ' '.join([query, *user_history[-3:]])
-    if not re.search(SCHEDULE_WORDS, query) and not re.fullmatch(r'[¿]?(?:(?:dime|ahora|y|solo|que tengo)\s+)*(?:los |el )?(?:' + '|'.join(DAYS) + r')[?!. ]*', query.strip()):
+    if (not re.search(SCHEDULE_WORDS, query)
+            and not re.fullmatch(r'[¿]?(?:(?:dime|ahora|y|solo|que tengo)\s+)*(?:los |el )?(?:' + '|'.join(DAYS) + r')[?!. ]*', query.strip())
+            and not (relative_date and re.search(SCHEDULE_WORDS, history_text))):
         return None
     if not re.search(SCHEDULE_WORDS, history_text):
         return None
@@ -95,17 +115,21 @@ def timetable_answer(db, goal, history, project_id=None):
         return None
     if not requested and len({r['periodo'] for r, _ in all_records}) > 1:
         return '¿Te refieres al primer cuatrimestre (S1) o al segundo (S2)?'
-    selected_days = days or DAYS
-    records = [(row, doc) for row, doc in all_records
-               if row['dia'] in selected_days and (not requested or row['periodo'].upper() == requested)]
-    if not records:
+    period_records = [(row, doc) for row, doc in all_records if not requested or row['periodo'].upper() == requested]
+    if not period_records:
         label = requested or 'el periodo solicitado'
-        return f'No encontré asignaturas para {label} en ese día dentro de los horarios indexados.'
-    if len({doc.id for _, doc in records}) > 1:
-        return 'He encontrado varios horarios. Indica qué documento quieres consultar: ' + ', '.join(sorted({doc.title for _, doc in records})) + '.'
-    semester = records[0][0]['periodo']
+        return f'No encontré asignaturas para {label} dentro de los horarios indexados.'
+    if len({doc.id for _, doc in period_records}) > 1:
+        return 'He encontrado varios horarios. Indica qué documento quieres consultar: ' + ', '.join(sorted({doc.title for _, doc in period_records})) + '.'
+    selected_days = days or DAYS
+    records = [(row, doc) for row, doc in period_records if row['dia'] in selected_days]
+    semester = period_records[0][0]['periodo']
     semester_name = 'Primer cuatrimestre' if semester.upper() == 'S1' else 'Segundo cuatrimestre'
-    lines = [f'📅 **Tu horario · {semester_name} ({semester.upper()})**']
+    if relative_date:
+        date_text = f'{DISPLAY_DAYS[relative_date.weekday()]} {relative_date.day} de {MONTHS[relative_date.month - 1]}'
+        lines = [f'📅 **{relative_label}, {date_text}**', f'Estas son tus clases del {semester_name.lower()} ({semester.upper()}):']
+    else:
+        lines = [f'📅 **Tu horario · {semester_name} ({semester.upper()})**']
     found = False
 
     def minutes(value):
@@ -136,12 +160,14 @@ def timetable_answer(db, goal, history, project_id=None):
                 groups[-1]['end'] = start + step
             else:
                 groups.append({'start': start, 'end': start + step, 'subject': row['asignatura'], 'room': room})
-        lines.extend(['', f'**{day.capitalize()}**'])
+        day_label = DISPLAY_DAYS[DAYS.index(day)].capitalize()
+        lines.extend(['', f'**{day_label}**'])
         for group in groups:
             room = f" · Aula {group['room']}" if group['room'] else ''
             lines.append(f"• **{clock(group['start'])}–{clock(group['end'])}** · {group['subject']}{room}")
     if not found:
-        lines.append('\nNo aparecen asignaturas en las casillas consultadas.')
-    pages = ', '.join(str(page) for page in sorted({row['pagina'] for row, _ in records}))
-    lines.extend(['', f'**Fuente:** {records[0][1].title} · página {pages}.'])
+        lines.append('\nNo tienes clases registradas para ese día.')
+    source_records = records or period_records
+    pages = ', '.join(str(page) for page in sorted({row['pagina'] for row, _ in source_records}))
+    lines.extend(['', f'**Fuente:** {source_records[0][1].title} · página {pages}.'])
     return '\n'.join(lines)

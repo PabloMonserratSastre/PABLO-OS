@@ -77,7 +77,7 @@ def tick(run_id: str):
             if exact is None and run.mode in {"CHAT", "ASK", "RESEARCH"}:
                 from .pdf_tables import timetable_answer
                 from .schemas import Plan
-                answer = timetable_answer(db, run.goal, context['conversation'], run.project_id)
+                answer = timetable_answer(db, run.goal, context['conversation'], run.project_id, context['today'])
                 if answer:
                     exact = Plan(summary=answer, steps=[])
             # Simple commands do not need document retrieval or an embeddings call.

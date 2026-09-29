@@ -59,7 +59,7 @@ def test_followup_uses_user_period_not_wrong_assistant(client, document):
 def test_missing_semester_and_empty_day(client, document):
     with DB() as db:
         assert '¿Te refieres' in timetable_answer(db, 'que asignaturas tengo los lunes', [])
-        assert 'No aparecen asignaturas' in timetable_answer(db, 'que asignaturas tengo los viernes S2', [])
+        assert 'No tienes clases registradas' in timetable_answer(db, 'que asignaturas tengo los viernes S2', [])
 
 
 def test_whole_period_is_presented_by_day(client, document):
@@ -68,6 +68,18 @@ def test_whole_period_is_presented_by_day(client, document):
     assert '**Lunes**' in result and '**Martes**' in result
     assert '15:00–17:00' in result and 'Sistemas' in result
     assert '[Horario]' not in result
+
+
+def test_relative_days_use_real_date_and_conversation_period(client, document):
+    history = [{'role': 'user', 'content': 'estamos consultando el periodo S1'}]
+    with DB() as db:
+        tomorrow = timetable_answer(db, 'entonces mañana que tengo de asignaturas?', history, None, '2026-09-27')
+        later = timetable_answer(db, 'y pasado mañana?', history, None, '2026-09-27')
+    assert '**Mañana, lunes 28 de septiembre**' in tomorrow
+    assert 'Sistemas' in tomorrow
+    assert '**Martes**' not in tomorrow and '**Viernes**' not in tomorrow
+    assert '**Pasado mañana, martes 29 de septiembre**' in later
+    assert 'Otra materia' in later
 
 
 def test_header_preamble_does_not_merge_tables():
