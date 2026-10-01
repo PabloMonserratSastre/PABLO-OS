@@ -3,12 +3,18 @@
 .agenda-filters button { min-height: 40px; }
 .agenda-thinking { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 4px; color: #348c79; }
 .agenda-thinking > span { flex: 1; }
+.chat-history-toggle { display: none; }
 body .chat-area { min-width: 0; }
 body .messages { overflow-wrap: anywhere; }
 @media (max-width: 767px) {
   body .content { padding: 22px 16px; }
   body .page-heading h1 { font-size: 1.7rem; }
   body .conversation-list { max-height: 130px; overflow-y: auto; }
+  body .conversation-list { flex-wrap: wrap; max-height: none; overflow: visible; gap: 8px; }
+  body .conversation-list > button:not([data-slot="button"]), body .conversation-list .chat-delete-conversation { display: none; }
+  body .conversation-list.history-open > button { display: flex; }
+  body .conversation-list.history-open > button:not([data-slot="button"]) { width: 100%; max-width: 100%; }
+  body .chat-history-toggle { display: inline-flex; }
   body .composer { padding: 16px; }
   body .list-toolbar { flex-wrap: wrap; }
 }

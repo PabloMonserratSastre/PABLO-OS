@@ -99,6 +99,7 @@ export default function Pablo() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const [taskScope, setTaskScope] = useState("pending");
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [online, setOnline] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -589,7 +590,7 @@ export default function Pablo() {
                 {view === "Inicio"
                   ? `Hola, ${state.profile.name}.`
                   : view === "Asistente"
-                    ? "Tu agenda empieza con una conversación."
+                    ? "Tu asistente"
                     : view}
               </h1>
               <p>
@@ -799,7 +800,7 @@ export default function Pablo() {
           )}
           {view === "Asistente" && (
             <div className="command-layout">
-              <aside className="conversation-list">
+              <aside className={"conversation-list " + (historyOpen ? "history-open" : "")}>
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -810,9 +811,13 @@ export default function Pablo() {
                   <Plus size={16} />
                   Nueva conversación
                 </Button>
+                <Button variant="ghost" className="chat-history-toggle" aria-expanded={historyOpen} onClick={() => setHistoryOpen((open) => !open)}>
+                  {historyOpen ? "Ocultar historial" : "Ver historial"}
+                </Button>
                 {conversation && (
                   <Button
                     variant="ghost"
+                    className="chat-delete-conversation"
                     onClick={() => {
                       const item = state.items.find(
                         (i) => i.id === conversation,
@@ -830,7 +835,7 @@ export default function Pablo() {
                     <button
                       className={conversation === c.id ? "selected" : ""}
                       key={c.id}
-                      onClick={() => setConversation(c.id)}
+                      onClick={() => { setConversation(c.id); setHistoryOpen(false); }}
                     >
                       {c.title}
                     </button>
