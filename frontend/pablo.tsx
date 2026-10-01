@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowUp,
   ArrowUpRight,
@@ -29,6 +29,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -456,17 +457,16 @@ export default function Pablo() {
           <SidebarMenu>
             {navigation.map(([name, Icon]) => (
               <SidebarMenuItem key={name}>
-                <SidebarMenuButton
-                  isActive={view === name}
-                  onClick={() => navigate(name)}
-                  className="nav-item"
+                <AgendaNavigationButton
+                  active={view === name}
+                  onNavigate={() => navigate(name)}
                 >
                   <Icon />
                   <span>{name}</span>
                   {name === "Tareas" && pending.length > 0 && (
                     <span className="nav-count">{pending.length}</span>
                   )}
-                </SidebarMenuButton>
+                </AgendaNavigationButton>
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
@@ -1258,5 +1258,13 @@ export default function Pablo() {
       <Toaster theme="light" richColors />
     </SidebarProvider>
   );
+}
+
+function AgendaNavigationButton({ active, onNavigate, children }: { active: boolean; onNavigate: () => void; children: ReactNode }) {
+  const { setOpenMobile } = useSidebar();
+  return <SidebarMenuButton isActive={active} className="nav-item" onClick={() => {
+    onNavigate();
+    setOpenMobile(false);
+  }}>{children}</SidebarMenuButton>;
 }
 

@@ -15,6 +15,7 @@ body .messages { overflow-wrap: anywhere; }
   body .conversation-list.history-open > button { display: flex; }
   body .conversation-list.history-open > button:not([data-slot="button"]) { width: 100%; max-width: 100%; }
   body .chat-history-toggle { display: inline-flex; }
+  body .chat-area .messages { min-height: 140px; max-height: 40dvh; }
   body .composer { padding: 16px; }
   body .list-toolbar { flex-wrap: wrap; }
 }
