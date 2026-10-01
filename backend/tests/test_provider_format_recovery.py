@@ -27,6 +27,13 @@ def test_generated_json_400_recovers_before_actions(groq, monkeypatch):
     assert calls[0]["response_format"] == {"type": "json_object"}
     assert "response_format" not in calls[1]
     assert calls[0]["messages"] == calls[1]["messages"]
+    import json
+    from datetime import date
+    context = json.loads(calls[0]["messages"][1]["content"])["CONTEXTO_NO_CONFIABLE"]
+    assert len(context["fechas_verificadas"]) == 14
+    weekdays = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+    for row in context["fechas_verificadas"]:
+        assert row["weekday"] == weekdays[date.fromisoformat(row["date"]).weekday()]
 
 
 def test_json_recovery_does_not_retry_indefinitely(groq, monkeypatch):

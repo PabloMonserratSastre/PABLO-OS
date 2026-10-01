@@ -124,8 +124,21 @@ class CompatibleProvider:
             return exact, {"synthesis": False, "deterministic": True}
         if not self.key or not self.model:
             raise ValueError("Configura AI_API_KEY y AI_MODEL en el servidor para usar IA.")
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+
         from .agenda import POLICY as AGENDA_POLICY
         from .agenda import TOOLS
+
+        context = dict(context)
+        today = datetime.now(ZoneInfo(context.get("timezone", "Europe/Madrid"))).date()
+        context["today"] = today.isoformat()
+        weekdays = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+        context["fechas_verificadas"] = [
+            {"date": (today + timedelta(days=i)).isoformat(),
+             "weekday": weekdays[(today.weekday() + i) % 7], "days_from_today": i}
+            for i in range(14)
+        ]
         catalog = [tool for tool in registry.list() if tool["id"] in TOOLS and (mode in {"DO", "PLAN", "CHAT"} or tool["risk"] == "SAFE")]
         schema = Plan.model_json_schema()
         schema["$defs"]["Step"]["properties"]["tool"]["enum"] = [tool["id"] for tool in catalog]
