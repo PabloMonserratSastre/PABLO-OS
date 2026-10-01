@@ -64,7 +64,8 @@ def ensure_idle(db):
 
 @router.get("/tools")
 def tools():
-    return registry.list()
+    from .agenda import TOOLS
+    return [tool for tool in registry.list() if tool["id"] in TOOLS]
 
 
 @router.get("/workspace/files")
@@ -116,7 +117,10 @@ def preview_workspace(path: str):
 
 @router.post("/tool-runs")
 def tool_run(body: ToolRequest):
+    from .agenda import validate_step
     from .main import run_json
+
+    validate_step({"tool": body.tool, "arguments": body.arguments})
 
     tool = registry.get(body.tool)
     if len(json.dumps(body.arguments)) > 60000:

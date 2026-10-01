@@ -8,6 +8,13 @@ KINDS = {"tasks", "projects", "memory", "workflows", "calendar", "documents", "a
 TERMINAL = {"COMPLETED", "FAILED", "CANCELLED", "PLANNED", "BLOCKED"}
 
 
+def normalized_title(value):
+    import unicodedata
+
+    return " ".join(''.join(c for c in unicodedata.normalize('NFD', str(value).casefold())
+                            if not unicodedata.combining(c)).split())
+
+
 def list_items(db, args, project_id):
     kind = args.get("kind")
     if kind not in KINDS:
@@ -20,9 +27,9 @@ def list_items(db, args, project_id):
         settings = db.get(Owner, 1).settings
         rows = [r for r in rows if settings.get("memory_enabled", True)
                 and r.data.get("category") in settings.get("memory_categories", [])]
-    term = str(args.get("query", "")).casefold()
+    term = normalized_title(args.get("query", ""))
     return [{"id": r.id, "kind": r.kind, "title": r.title, "version": r.version, "data": r.data}
-            for r in rows if term in r.title.casefold()][:100]
+            for r in rows if term in normalized_title(r.title)][:100]
 
 
 def resolve(db, args, project_id):
@@ -33,12 +40,14 @@ def resolve(db, args, project_id):
     if args.get("id"):
         query = query.where(Item.id == args["id"])
     elif args.get("title"):
-        query = query.where(Item.title == args["title"])
+        pass  # Compare normalized complete titles below, never guess by substring.
     else:
         raise ValueError("Indica el ID o título exacto del elemento.")
     if project_id:
         query = query.where((Item.id == project_id) | (Item.data["project_id"].as_string() == project_id))
     rows = db.scalars(query).all()
+    if not args.get("id"):
+        rows = [row for row in rows if normalized_title(row.title) == normalized_title(args["title"])]
     if len(rows) != 1:
         raise ValueError("No se encontró un único elemento. Consulta los elementos y utiliza su ID exacto.")
     row = rows[0]
@@ -114,7 +123,7 @@ def update_item(db, args, project_id):
     if row.kind == "documents" and ("content" in changes or "description" in changes):
         reindex(db, row)
     db.flush()
-    return {"id": row.id, "title": title, "version": row.version, "verified": True}
+    return {"id": row.id, "title": title, "version": row.version, "changes": changes, "verified": True}
 
 
 def delete_item(db, args, project_id):

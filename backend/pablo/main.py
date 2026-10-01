@@ -29,13 +29,11 @@ from .db import (
     engine,
     now,
 )
-from .integrations import router as integrations_router
 from .knowledge import extract_isolated, index, prepare_vectors, search
 from .pulse import build_pulse
 from .scheduling import create_execution, parse_instant
 from .schemas import Command, Credentials, Decision, Enabled, Record, ScheduledCommand, Settings
 from .security import allowed_origin, digest, new_session, password_hash, require_user, verify
-from .tools import AGENTS, registry
 from .worker import TERMINAL
 
 app = FastAPI(title="PABLO OS", version="0.4.0", docs_url="/api/docs", openapi_url="/api/openapi.json")
@@ -541,34 +539,6 @@ def global_search(q: str = "", project_id: str | None = None):
         }
 
 
-@app.get("/api/v1/agents", dependencies=[Depends(require_user)])
-def agents():
-    return [
-        {
-            "name": name,
-            "description": description,
-            "tools": [t["id"] for t in registry.list() if t["agent"] == name],
-            "status": "AVAILABLE" if any(t["agent"] == name for t in registry.list()) else "ADAPTER_PENDING",
-        }
-        for name, description in AGENTS
-    ]
-
-
-@app.get("/api/v1/integrations", dependencies=[Depends(require_user)])
-def integrations():
-    from .configuration import public_provider
-    from .integrations import integration_status
-
-    with DB() as db:
-        provider = public_provider(db)
-        return integration_status(db) + [
-            {"name": "Proveedor IA", "status": "CONFIGURED" if provider["configured"] else "DISCONNECTED",
-             "detail": "Configura tu proveedor y presupuesto en Ajustes."},
-            {"name": "Workspace local", "status": "AVAILABLE", "detail": "Archivos, prototipos, Git y ejecución de código revisado con aprobación."},
-            {"name": "Documentos", "status": "CONNECTED", "detail": "Extracción, búsqueda y reindexación locales; embeddings opcionales."},
-        ]
-
-
 @app.get("/api/v1/activity", dependencies=[Depends(require_user)])
 def activity():
     with DB() as db:
@@ -724,7 +694,6 @@ def delete_schedule(schedule_id: str):
 
 
 app.include_router(capabilities_router)
-app.include_router(integrations_router)
 
 static = Path(os.getenv("WEB_DIR", "dist-local")).resolve()
 if static.exists():

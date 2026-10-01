@@ -253,7 +253,7 @@ def test_plan_template_contains_real_steps_but_no_writes(client):
     assert not [i for i in client.get("/api/v1/state").json()["items"] if i["kind"] in {"tasks", "projects"}]
 
 
-def test_rag_supplies_retrieved_evidence_to_provider(client, monkeypatch):
+def test_old_documents_are_not_sent_to_focused_assistant(client, monkeypatch):
     from pablo.providers import CompatibleProvider
     from pablo.schemas import Plan
 
@@ -272,8 +272,8 @@ def test_rag_supplies_retrieved_evidence_to_provider(client, monkeypatch):
     monkeypatch.setattr(CompatibleProvider, "plan", fake_plan)
     r = client.post("/api/v1/commands", json={"goal": "Explain photosynthesis"}).json()
     assert run_until_pause(r["id"]).status == "COMPLETED"
-    assert captured["documents"][0]["source"] == "energy.txt"
-    assert "chemical" in captured["documents"][0]["text"]
+    assert captured["documents"] == []
+    assert "today" in captured and "agenda_items" in captured
 
 
 def test_ask_cannot_execute_model_proposed_write(client, monkeypatch):

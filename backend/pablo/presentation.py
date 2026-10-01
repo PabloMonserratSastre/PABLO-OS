@@ -14,9 +14,12 @@ def render_results(steps: list[dict]) -> str:
         if tool in {"items.create", "items.update", "items.delete", "schedules.update", "schedules.delete"} and isinstance(result, dict):
             verb = "Eliminado" if result.get("deleted") else "Creado" if tool.endswith("create") else "Actualizado"
             sections.append(f"**{verb}: {result.get('title', '')}**\nCambio guardado y verificado.")
+            changes = result.get("changes", {})
+            if "due" in changes:
+                sections.append("Plazo: " + (changes["due"] or "sin fecha"))
             continue
         if tool == "projects.list":
-            sections.append("**Tus proyectos**\n\n" + ("\n".join("• " + row["title"] for row in result) if result else "No hay proyectos que coincidan con la consulta."))
+            sections.append("**Tus proyectos**\n\n" + ("\n".join("• " + row["title"] + (" · " + row["due"] if row.get("due") else "") for row in result) if result else "No hay proyectos que coincidan con la consulta."))
         elif tool == "tasks.list":
             lines = ["**Tus tareas pendientes**"]
             if not result:
@@ -36,7 +39,7 @@ def render_results(steps: list[dict]) -> str:
                 "tasks.create": "Tarea creada",
                 "report.create": "Informe guardado",
             }[tool]
-            sections.append(f"**{noun}:** {result.get('title', '')}")
+            sections.append(f"**{noun}:** {result.get('title', '')}" + (f"\nPlazo: {result['due']}" if result.get('due') else ""))
         elif tool == "code.scaffold" and isinstance(result, dict):
             sections.append(f"**Proyecto creado: {result.get('name', '')}**\nLo encontrarás en Workspace, en la carpeta **{result.get('path', '')}**.\nAbre index.html junto con styles.css y script.js.\n{result.get('scope', '')}")
         elif tool == "workspace.write" and isinstance(result, dict):

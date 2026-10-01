@@ -6,20 +6,41 @@
 
 <p align="center"><strong>Tu espacio personal para pensar, organizarte y actuar con IA.</strong></p>
 
-PABLO OS es una aplicación web instalable que reúne conversación con IA, tareas, proyectos, calendario, documentos, automatizaciones e integraciones en una sola interfaz. Convierte peticiones en lenguaje natural en respuestas útiles o acciones verificables, manteniendo el control de los cambios sensibles en manos del usuario.
+<p align="center">
+  <a href="https://pablo-os.onrender.com/demo"><strong>▶ Probar la demo interactiva</strong></a>
+  ·
+  <a href="docs/DEPLOYMENT.md">Desplegar</a>
+  ·
+  <a href="CONTRIBUTING.md">Contribuir</a>
+</p>
 
-> **Estado:** beta privada en desarrollo activo. La arquitectura y el código están disponibles como muestra del proyecto; la instancia personal y sus datos no son públicos.
+> **Demo pública:** funciona sin cuenta, no conecta servicios reales y conserva los cambios únicamente durante la pestaña actual. Al recargar, los datos de ejemplo se restauran.
+
+PABLO OS es una agenda personal con un asistente de IA. Cuenta lo que tienes que hacer y organiza tus tareas, proyectos y plazos desde una conversación, en el ordenador o en el móvil.
+
+> **Estado:** beta en desarrollo activo. La demo interpreta ejemplos de forma local, sin conectarse a un modelo ni guardar datos de los visitantes. La aplicación personal utiliza el proveedor de IA que configure su propietario.
 
 ## Qué puede hacer
 
-- **Asistente único:** conversa, consulta información y ejecuta acciones desde el mismo chat.
-- **Organización personal:** gestiona tareas, proyectos, agenda, memoria y actividad.
-- **Google Workspace:** consulta Gmail, sincroniza Google Calendar y trabaja con Drive mediante OAuth.
-- **Documentos con contexto:** indexa PDF y DOCX, reconoce tablas y responde sobre horarios académicos.
-- **Workspace creativo:** genera proyectos web en carpetas independientes, permite inspeccionarlos y abrir una vista previa.
-- **Automatizaciones:** programa objetivos recurrentes y muestra su resultado en un resumen diario.
-- **Integraciones:** conecta GitHub, n8n y servicios HTTP con credenciales cifradas.
-- **Móvil y escritorio:** funciona como PWA en iPhone y como aplicación local en Windows.
+- **Apuntar deberes y tareas:** guardar títulos, descripciones, prioridades y fechas de entrega.
+- **Organizar proyectos:** reunir tareas dentro de un objetivo y ver su progreso.
+- **Editar sin duplicar:** cambiar plazos, completar tareas y renombrar elementos existentes.
+- **Eliminar con confirmación:** revisar la acción antes de borrar una tarea o proyecto.
+- **Consultar la agenda:** ver pendientes, tareas para hoy, vencidas y completadas.
+- **Conversar con IA:** pedir ayuda para dividir un trabajo y decidir por dónde empezar.
+- **Móvil y escritorio:** PWA instalable con los mismos datos al usar la misma instancia en la nube.
+
+Ejemplos:
+
+> Añade una tarea llamada repasar matemáticas para mañana.
+>
+> Tengo un trabajo de historia para el viernes. Crea un proyecto y divídelo en tres tareas.
+>
+> Cambia la fecha de entrega del ensayo al lunes.
+>
+> Ya he terminado la tarea de matemáticas.
+
+La navegación se limita a **Inicio, Asistente, Tareas, Proyectos y Ajustes**. Las integraciones externas y las automatizaciones ya no forman parte del asistente. El esquema de datos y algunos módulos históricos se conservan para no perder información existente; el worker no despacha las automatizaciones antiguas y rechaza herramientas retiradas.
 
 ## Principios del producto
 
@@ -36,12 +57,11 @@ flowchart LR
     UI[React + TypeScript\nPWA responsive] --> API[FastAPI\nAPI y orquestación]
     API --> DB[(PostgreSQL / Supabase)]
     API --> AI[Proveedor de IA\ncompatible con OpenAI]
-    API --> GOOGLE[Google OAuth\nGmail · Calendar · Drive]
-    API --> TOOLS[Herramientas verificadas\nTareas · Proyectos · Workspace]
-    WORKER[Worker de automatizaciones] --> API
+    API --> TOOLS[Herramientas verificadas\nTareas · Proyectos · Plazos]
+    WORKER[Worker de ejecuciones] --> API
 ```
 
-El frontend se compila como una aplicación React responsive. FastAPI sirve la API y la interfaz, SQLAlchemy mantiene el modelo de datos y un worker recupera las automatizaciones pendientes. El contenedor de producción se despliega como un único servicio para simplificar la operación.
+El frontend se compila como una aplicación React responsive. FastAPI sirve la API y la interfaz, SQLAlchemy mantiene el modelo de datos y un worker procesa las peticiones del asistente. El contenedor de producción se despliega como un único servicio para simplificar la operación.
 
 ## Tecnologías
 

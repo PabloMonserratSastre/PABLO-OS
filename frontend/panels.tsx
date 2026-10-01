@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Activity, Profile, api } from "./api";
 import { Badge, Blank, Choice } from "./common";
 import { ProviderSettings, PrivacySettings } from "./settings";
@@ -55,62 +53,20 @@ export function SettingsPanel({
           />
         </label>
         <label>
-          Autonomía
+          Cómo quieres que te ayude
           <Choice
-            label="Autonomía"
+            label="Cómo quieres que te ayude"
             value={form.autonomy}
             onChange={(v) => setForm({ ...form, autonomy: v })}
             options={[
-              ["MANUAL", "Manual · aprobar cada herramienta"],
-              ["ASSISTED", "Asistido · aprobar cambios"],
-              ["AUTONOMOUS", "Autónomo · cambios locales permitidos"],
+              ["MANUAL", "Revisar consultas y cambios"],
+              ["ASSISTED", "Revisar solo los cambios"],
+              ["AUTONOMOUS", "Guardar y editar directamente"],
             ]}
           />
         </label>
         <p className="muted">
-          Los envíos, cambios externos y acciones críticas siempre necesitan
-          aprobación antes de ejecutarse.
-        </p>
-        <label className="switch-row">
-          Usar memoria
-          <Switch
-            checked={form.memory_enabled}
-            onCheckedChange={(v) => setForm({ ...form, memory_enabled: v })}
-          />
-        </label>
-        <div className="memory-options">
-          {[
-            ["user", "Personal"],
-            ["project", "Proyectos"],
-            ["conversation", "Conversaciones"],
-            ["knowledge", "Conocimiento"],
-          ].map(([id, name]) => (
-            <label className="check-label" key={id}>
-              <Checkbox
-                checked={form.memory_categories.includes(id)}
-                onCheckedChange={(v) =>
-                  setForm({
-                    ...form,
-                    memory_categories: v
-                      ? [...form.memory_categories, id]
-                      : form.memory_categories.filter((c) => c !== id),
-                  })
-                }
-              />
-              {name}
-            </label>
-          ))}
-        </div>
-        <label className="switch-row">
-          Forzar modo demo sin IA
-          <Switch
-            checked={form.demo}
-            onCheckedChange={(v) => setForm({ ...form, demo: v })}
-          />
-        </label>
-        <p className="muted">
-          La demo usa plantillas identificadas y guarda tus acciones reales; no
-          conecta cuentas externas.
+          Las eliminaciones siempre necesitan tu confirmación. Puedes permitir que el asistente guarde y edite tus tareas directamente.
         </p>
         <Button disabled={busy}>
           {busy ? "Guardando…" : "Guardar ajustes"}

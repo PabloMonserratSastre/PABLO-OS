@@ -172,7 +172,7 @@ def test_exact_commands_do_not_swallow_other_instructions(goal, mode):
     "Buscar correos recibidos en Gmail de los últimos 7 días",
     "Busca mis correos recibidos en Gmail de los últimos 7 días y muéstrame sus asuntos. No envíes nada.",
 ])
-def test_gmail_lookup_executes_without_model(client, local, monkeypatch, goal):
+def test_retired_gmail_is_explained_without_model(client, local, monkeypatch, goal):
     from pablo import integrations
     captured = []
     def request(*args, **kwargs):
@@ -189,11 +189,11 @@ def test_gmail_lookup_executes_without_model(client, local, monkeypatch, goal):
     row = client.post("/api/v1/commands", json={"goal": goal, "mode": "DO"}).json()
     for _ in range(4):
         process(row["id"])
-    assert captured == ["in:inbox newer_than:7d"]
+    assert captured == []
     with DB() as db:
         run = db.get(Run, row["id"])
         assert run.status == "COMPLETED"
-        assert "Prueba real de resultado" in run.result
+        assert "tareas y proyectos" in run.result
 
 
 @pytest.mark.parametrize("suffix", [" y borra todos", " excepto los de Ana", "; envía un correo"])

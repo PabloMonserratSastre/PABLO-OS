@@ -4,26 +4,18 @@ import {
   ArrowUp,
   ArrowUpRight,
   Bell,
-  Bot,
-  Brain,
   Check,
   FileText,
   Folder,
   Home,
-  Layers,
   LogOut,
   Plus,
   Search,
   Settings,
   ShieldCheck,
   Sparkles,
-  Terminal,
   Trash2,
-  Zap,
-  Activity as ActivityIcon,
   ChevronRight,
-  CalendarDays,
-  FolderCode,
   RefreshCw,
 } from "lucide-react";
 import {
@@ -64,45 +56,29 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { api, ApiError, labels, RecordItem, Run, State, terminal } from "./api";
+import { api, ApiError, RecordItem, Run, State, terminal } from "./api";
 import { Badge, Blank, Choice, RichText, withoutSynthesis } from "./common";
 import { Login } from "./auth";
-import { Automations } from "./automations";
 import { useHistory } from "./history";
 import { Editor } from "./editor";
 import { Execution } from "./execution";
-import { RemotePanel, SettingsPanel } from "./panels";
-import { CalendarPanel } from "./calendar";
+import { SettingsPanel } from "./panels";
 import { Dictation, ReadAloud } from "./voice";
-import { ToolsPanel } from "./tools";
-import { WorkspaceFiles } from "./workspace-files";
-import { DailySummary } from "./daily-summary";
-import { Pulse } from "./pulse";
 const navigation = [
   ["Inicio", Home],
-  ["Command", Terminal],
-  ["Proyectos", Folder],
+  ["Asistente", Sparkles],
   ["Tareas", Check],
-  ["Calendario", CalendarDays],
-  ["Workspace", FolderCode],
-  ["Memoria", Brain],
-  ["Archivos", FileText],
-  ["Workflows", Zap],
-  ["Integraciones", Layers],
-  ["Actividad", ActivityIcon],
+  ["Proyectos", Folder],
   ["Ajustes", Settings],
 ] as const;
 const kinds: Record<string, string> = {
   Proyectos: "projects",
   Tareas: "tasks",
-  Memoria: "memory",
-  Archivos: "documents",
-  Workflows: "workflows",
 };
 const hints = [
-  "¿Qué debería priorizar hoy?",
-  "Quiero crear un videojuego. Organiza el desarrollo.",
-  "Busca información en mis documentos.",
+  "¿Qué tareas tengo pendientes y qué debería priorizar hoy?",
+  "Tengo que entregar un trabajo el viernes. Ayúdame a organizarlo.",
+  "Crea una tarea llamada repasar matemáticas para mañana.",
 ];
 export default function Pablo() {
   const [state, setState] = useState<State | null>(null);
@@ -122,6 +98,7 @@ export default function Pablo() {
   const [selectedRun, setSelectedRun] = useState<string | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
   const [filter, setFilter] = useState("");
+  const [taskScope, setTaskScope] = useState("pending");
   const [busy, setBusy] = useState(false);
   const [online, setOnline] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -255,13 +232,13 @@ export default function Pablo() {
       );
       setSelectedRun(id);
       setConversation(item.conversation_id);
-      setView("Command");
+      setView("Asistente");
     } catch (e) {
       toast.error((e as Error).message);
     }
   }
   function navigate(name: string) {
-    setView(name);
+    setView(navigation.some(([tab]) => tab === name) ? name : "Inicio");
     setFilter("");
   }
   async function send(custom?: string) {
@@ -272,12 +249,12 @@ export default function Pablo() {
       const run = await api<Run>("/commands", "POST", {
         goal: text,
         mode,
-        project_id: project === "all" ? null : project,
-        conversation_id: view === "Command" ? conversation : null,
+        project_id: view === "Asistente" && project !== "all" ? project : null,
+        conversation_id: view === "Asistente" ? conversation : null,
       });
       setConversation(run.conversation_id);
       setGoal("");
-      setView("Command");
+      setView("Asistente");
       setSelectedRun(null);
       await refresh();
     } catch (e) {
@@ -328,12 +305,12 @@ export default function Pablo() {
   const pending = tasks.filter(
     (t) => !["DONE", "CANCELLED"].includes(t.status || ""),
   );
-  const memories = state.items.filter((i) => i.kind === "memory");
-  const docs = state.items.filter((i) => i.kind === "documents");
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: state.profile.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const filtered = state.items.filter(
     (i) =>
       i.kind === kinds[view] &&
-      (project === "all" || i.project_id === project || i.id === project) &&
+      (view !== "Tareas" || taskScope === "all" || (taskScope === "done" ? i.status === "DONE" : !["DONE", "CANCELLED"].includes(i.status || "") && (taskScope === "pending" || (taskScope === "today" ? i.due === today : Boolean(i.due && i.due < today))))) &&
+      (view === "Proyectos" || project === "all" || i.project_id === project || i.id === project) &&
       `${i.title} ${i.description || ""}`
         .toLowerCase()
         .includes(filter.toLowerCase()),
@@ -341,8 +318,9 @@ export default function Pablo() {
   const focus = [...pending]
     .sort(
       (a, b) =>
+        Number(Boolean(b.due && b.due <= today)) - Number(Boolean(a.due && a.due <= today)) ||
         (({ HIGH: 0, MEDIUM: 1, LOW: 2 })[a.priority as "HIGH"] ?? 1) -
-        ({ HIGH: 0, MEDIUM: 1, LOW: 2 }[b.priority as "HIGH"] ?? 1),
+        ({ HIGH: 0, MEDIUM: 1, LOW: 2 }[b.priority as "HIGH"] ?? 1) || (a.due || "9999").localeCompare(b.due || "9999"),
     )
     .slice(0, 4);
   const messages = history.messages;
@@ -364,8 +342,8 @@ export default function Pablo() {
       <div className="composer-input">
         <Sparkles size={23} />
         <Textarea
-          aria-label="¿Qué quieres conseguir?"
-          placeholder="¿Qué quieres conseguir?"
+          aria-label="¿Qué tienes que hacer?"
+          placeholder="¿Qué tienes que hacer?"
           value={goal}
           maxLength={12000}
           onChange={(e) => setGoal(e.target.value)}
@@ -547,7 +525,7 @@ export default function Pablo() {
                 : state.profile.demo
                 ? "MOCK · modo demo"
                 : state.ai.configured
-                  ? "Proveedor configurado"
+                  ? "Asistente listo"
                   : "Modo local · sin IA"}
             </span>
             <button
@@ -590,7 +568,7 @@ export default function Pablo() {
               <div>
                 <strong>Tu espacio local está listo</strong>
                 <p>
-                  Gestiona tus proyectos, agenda y archivos. Conecta un
+                  Gestiona tus tareas, proyectos y plazos. Configura un
                   proveedor para conversar con IA.
                 </p>
               </div>
@@ -610,15 +588,15 @@ export default function Pablo() {
               <h1>
                 {view === "Inicio"
                   ? `Hola, ${state.profile.name}.`
-                  : view === "Command"
-                    ? "De una idea al siguiente paso."
+                  : view === "Asistente"
+                    ? "Tu agenda empieza con una conversación."
                     : view}
               </h1>
               <p>
                 {view === "Inicio"
                   ? "Pon intención a tu día. Elige lo que importa."
-                  : view === "Command"
-                    ? "Pregunta, prepara un plan o ejecuta acciones controladas."
+                  : view === "Asistente"
+                    ? "Cuéntame qué tienes que hacer. Te ayudo a organizarlo y guardarlo."
                     : view === "Proyectos"
                       ? "Un lugar para cada objetivo."
                       : view === "Memoria"
@@ -655,14 +633,6 @@ export default function Pablo() {
           </div>
           {view === "Inicio" && (
             <>
-              <Pulse
-                pulse={state.pulse}
-                busy={busy}
-                onPrompt={(prompt) => void send(prompt)}
-                onNavigate={navigate}
-                onOpenRun={(id) => void openRun(id)}
-              />
-              <DailySummary run={state.daily_summary} onRun={(id) => void openRun(id)} />
               <div className="home-composer">
                 {composer}
                 <div className="suggestions">
@@ -685,7 +655,7 @@ export default function Pablo() {
                         [
                           "Organizar mi día",
                           "Empezar un proyecto",
-                          "Consultar documentos",
+                          "Apuntar deberes",
                         ][i]
                       }
                       <ArrowUpRight size={14} />
@@ -710,8 +680,8 @@ export default function Pablo() {
                   <span>Proyectos abiertos</span>
                 </div>
                 <div>
-                  <strong>{docs.length}</strong>
-                  <span>Documentos indexados</span>
+                  <strong>{pending.filter((t) => t.due && t.due < today).length}</strong>
+                  <span>Plazos vencidos</span>
                 </div>
                 <div>
                   <strong>{state.approvals.length}</strong>
@@ -776,42 +746,26 @@ export default function Pablo() {
                 </section>
                 <section className="panel next-panel">
                   <div className="eyebrow">EN TU RADAR</div>
-                  <h2>Actividad reciente</h2>
-                  {state.runs.length ? (
-                    state.runs.slice(0, 3).map((r) => (
-                      <button
-                        className="run-preview"
-                        key={r.id}
-                        onClick={() => void openRun(r.id)}
-                      >
-                        <span className="mini-orb">
-                          <Bot size={16} />
-                        </span>
-                        <div>
-                          <strong>{r.goal}</strong>
-                          <p>{labels[r.status] || r.status}</p>
-                        </div>
-                        <ChevronRight size={16} />
-                      </button>
-                    ))
-                  ) : (
-                    <Blank title="Todo listo para empezar">
-                      Tu primera ejecución aparecerá aquí, con sus pasos y
-                      resultados.
-                    </Blank>
-                  )}
+                  <h2>Próximas entregas</h2>
+                  {pending.some((t) => t.due) ? [...pending].filter((t) => t.due).sort((a, b) => a.due!.localeCompare(b.due!)).slice(0, 4).map((t) => (
+                    <button className="run-preview" key={t.id} onClick={() => setEditor({ kind: "tasks", item: t })}>
+                      <span className="mini-orb"><Check size={16} /></span>
+                      <div><strong>{t.title}</strong><p>{t.due!.split("-").reverse().join("/")}{t.due! < today ? " · Vencida" : t.due === today ? " · Hoy" : ""}</p></div>
+                      <ChevronRight size={16} />
+                    </button>
+                  )) : <Blank title="Sin entregas pendientes">Dile al asistente qué tienes que entregar y para cuándo.</Blank>}
                   <div className="calendar-note">
                     <span>Tu agenda</span>
                     <Badge value="Disponible" />
                     <p>
-                      Organiza tus eventos y consulta las fechas de tus tareas.
+                      Tus tareas, proyectos y plazos en un mismo lugar.
                     </p>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => navigate("Calendario")}
+                      onClick={() => navigate("Tareas")}
                     >
-                      Abrir calendario
+                      Ver mis plazos
                       <ArrowUpRight size={14} />
                     </Button>
                   </div>
@@ -843,7 +797,7 @@ export default function Pablo() {
               )}
             </>
           )}
-          {view === "Command" && (
+          {view === "Asistente" && (
             <div className="command-layout">
               <aside className="conversation-list">
                 <Button
@@ -889,7 +843,7 @@ export default function Pablo() {
                     onChange={setProject}
                     label="Contexto de proyecto"
                     options={[
-                      ["all", "Contexto de conversación"],
+                      ["all", "Toda mi agenda"],
                       ...projects.map(
                         (p) => [p.id, p.title] as [string, string],
                       ),
@@ -897,8 +851,8 @@ export default function Pablo() {
                   />
                   <span className="muted">
                     {state.ai.configured && !state.profile.demo
-                      ? state.ai.model
-                      : "Plantillas locales · interpretación limitada"}
+                      ? "IA integrada en tu agenda"
+                      : "Órdenes sencillas disponibles sin IA"}
                   </span>
                 </div>
                 <div className="messages" ref={messagesRef} role="log" aria-label="Mensajes de la conversación" aria-live="polite">
@@ -916,9 +870,8 @@ export default function Pablo() {
                     </Button>
                   )}
                   {!messages.length && (
-                    <Blank title="¿Qué quieres conseguir?">
-                      Empieza por un objetivo. Puedes revisar el plan y
-                      autorizar cada cambio.
+                    <Blank title="¿Qué tienes que hacer?">
+                      Prueba: «Apunta repasar matemáticas para mañana» o «Ayúdame a organizar un trabajo para el viernes».
                     </Blank>
                   )}
                   {messages.map((m) => (
@@ -934,33 +887,28 @@ export default function Pablo() {
                   ))}
                 </div>
                 {state.runs.filter(r => r.conversation_id === conversation && (!terminal.has(r.status) || r.id === selectedRun)).map(r => (
-                  <Execution key={r.id} run={r} approvals={state.approvals}
-                    close={() => setSelectedRun(null)} refresh={() => void refresh()} onError={toast.error} />
+                  r.status === "WAITING_APPROVAL" || r.id === selectedRun ?
+                    <Execution key={r.id} run={r} approvals={state.approvals}
+                      close={() => setSelectedRun(null)} refresh={() => void refresh()} onError={toast.error} /> :
+                    <div className="agenda-thinking" key={r.id} role="status">
+                      <Sparkles size={17} /><span>{r.status === "QUEUED" ? "Preparando tu petición…" : "Organizando tu agenda…"}</span>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedRun(r.id)}>Ver detalles</Button>
+                      <Button variant="ghost" size="sm" onClick={async () => {
+                        try { await api(`/runs/${r.id}/cancel`, "POST"); await refresh(); }
+                        catch (error) { toast.error((error as Error).message); }
+                      }}>Detener</Button>
+                    </div>
                 ))}
                 {composer}
               </section>
             </div>
           )}
-          {view === "Workflows" && (
-            <Automations projects={projects} onRun={(id) => void openRun(id)} />
-          )}
-          {view === "Calendario" && (
-            <CalendarPanel projects={projects} tasks={tasks} />
-          )}
-          {view === "Workspace" && (
-            <><WorkspaceFiles />
-            <details className="panel">
-            <summary style={{cursor: "pointer"}}>Herramientas avanzadas</summary>
-            <ToolsPanel
-              workspaceOnly
-              projects={projects}
-              onRun={(id) => void openRun(id)}
-            />
-            </details>
-            </>
-          )}
           {kinds[view] && (
             <>
+              {view === "Tareas" && <div className="agenda-filters" aria-label="Mostrar tareas">
+                {[["pending", "Pendientes"], ["today", "Para hoy"], ["overdue", "Vencidas"], ["done", "Completadas"], ["all", "Todas"]].map(([id, label]) =>
+                  <Button key={id} variant={taskScope === id ? "default" : "ghost"} aria-pressed={taskScope === id} onClick={() => setTaskScope(id)}>{label}</Button>)}
+              </div>}
               <div className="list-toolbar">
                 <div className="search-field">
                   <Search size={17} />
@@ -999,9 +947,11 @@ export default function Pablo() {
                 </p>
               )}
               {!filtered.length ? (
-                <Blank title="Todavía no hay elementos">
+                <Blank title={view === "Tareas" ? "No hay tareas en esta vista" : "Todavía no hay proyectos"}>
                   {filter
                     ? "Prueba otra búsqueda."
+                    : view === "Tareas"
+                      ? "Cambia de filtro para ver otras tareas, o apunta una nueva con el asistente."
                     : view === "Archivos"
                       ? "Sube PDF, DOCX, TXT, Markdown o código. Máximo 5 MB."
                       : "Crea el primero para empezar."}
@@ -1105,7 +1055,7 @@ export default function Pablo() {
                             onClick={() => {
                               setGoal(item.description || item.title);
 
-                              navigate("Command");
+                              navigate("Asistente");
                             }}
                           >
                             Preparar ejecución
@@ -1150,13 +1100,6 @@ export default function Pablo() {
                 )}
             </>
           )}
-          {["Integraciones", "Actividad"].includes(view) && (
-            <RemotePanel
-              key={view}
-              view={view}
-              onPrompt={(prompt) => void send(prompt)}
-            />
-          )}
           {view === "Ajustes" && (
             <SettingsPanel
               profile={state.profile}
@@ -1175,8 +1118,7 @@ export default function Pablo() {
               PABLO OS <span className="muted">/</span> TU ESPACIO PERSONAL
             </span>
             <span>
-              {memories.length} recuerdos ·{" "}
-              {state.profile.autonomy.toLowerCase()}
+              Tu agenda, bajo tu control
             </span>
           </footer>
         </main>
@@ -1263,7 +1205,7 @@ export default function Pablo() {
         </AlertDialogContent>
       </AlertDialog>
       <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
-        <CommandInput placeholder="Buscar proyectos, tareas, documentos…" />
+        <CommandInput placeholder="Buscar tareas y proyectos…" />
         <CommandList>
           <CommandEmpty>No hay resultados.</CommandEmpty>
           <CommandGroup heading="Ir a">
@@ -1282,7 +1224,7 @@ export default function Pablo() {
           </CommandGroup>
           <CommandGroup heading="Tu espacio">
             {state.items
-              .filter((i) => !["messages", "artifacts"].includes(i.kind))
+              .filter((i) => ["tasks", "projects", "conversations"].includes(i.kind))
               .map((i) => (
                 <CommandItem
                   key={i.id}
@@ -1290,7 +1232,7 @@ export default function Pablo() {
                   onSelect={() => {
                     if (i.kind === "conversations") {
                       setConversation(i.id);
-                      navigate("Command");
+                      navigate("Asistente");
                     } else {
                       navigate(
                         Object.keys(kinds).find((k) => kinds[k] === i.kind) ||

@@ -82,6 +82,10 @@ def test_batch_titles_and_exact_updates(client):
     ("calendar", {"start": "2030-01-01T10:00:00+01:00", "end": "2030-01-01T11:00:00+01:00"}),
 ])
 def test_other_item_lifecycles(client, kind, values):
+    if kind != "projects":
+        response = client.post("/api/v1/tool-runs", json={"tool": "items.create", "arguments": {"kind": kind, "values": {"title": "Prueba", **values}}})
+        assert response.status_code == 422
+        return
     execute(client, "items.create", {"kind": kind, "values": {"title": "Prueba", **values}})
     execute(client, "items.update", {"kind": kind, "title": "Prueba", "changes": {"title": "Renombrado"}})
     execute(client, "items.delete", {"kind": kind, "title": "Renombrado"})
@@ -89,14 +93,10 @@ def test_other_item_lifecycles(client, kind, values):
         assert db.scalar(select(Item).where(Item.kind == kind)) is None
 
 
-def test_schedule_pause_edit_delete(client):
-    created = client.post("/api/v1/schedules", json={"title": "Repaso", "goal": "Hola", "run_at": "2030-01-01T12:00:00+01:00"})
-    assert created.status_code == 200
-    execute(client, "schedules.update", {"title": "Repaso", "changes": {"enabled": False, "goal": "Revisa mis tareas"}})
-    schedules = client.get("/api/v1/schedules").json()
-    assert schedules[0]["enabled"] is False
-    execute(client, "schedules.delete", {"title": "Repaso"})
-    assert client.get("/api/v1/schedules").json() == []
+def test_schedule_tools_are_retired(client):
+    for tool in ["schedules.update", "schedules.delete"]:
+        response = client.post("/api/v1/tool-runs", json={"tool": tool, "arguments": {"title": "Repaso"}})
+        assert response.status_code == 422
 
 
 def test_chat_batch_persists_each_task_once(client):

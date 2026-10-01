@@ -35,7 +35,7 @@ export function Editor({
   const [project, setProject] = useState(item?.project_id || "none");
   const [category, setCategory] = useState(item?.category || "user");
   const [pinned, setPinned] = useState(item?.pinned || false);
-  const [repository, setRepository] = useState(item?.repository || "");
+  const repository = item?.repository || "";
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const nouns: Record<string, string> = {
@@ -115,16 +115,7 @@ export function Editor({
               maxLength={20000}
             />
           </label>
-          {kind === "projects" ? (
-            <label>
-              Repositorio GitHub
-              <Input
-                placeholder="propietario/repositorio"
-                value={repository}
-                onChange={(e) => setRepository(e.target.value)}
-              />
-            </label>
-          ) : (
+          {kind === "tasks" && (
             <label>
               Proyecto
               <Choice

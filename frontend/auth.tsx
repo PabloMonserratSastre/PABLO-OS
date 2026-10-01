@@ -27,7 +27,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         <p className="muted">
           {setup
             ? "Crea tu cuenta local. Después podrás organizar proyectos, consultar tus documentos y dar el siguiente paso."
-            : "Tus proyectos, tu memoria y tus próximos pasos."}
+            : "Tus tareas, proyectos y fechas de entrega."}
         </p>
         {setup === null && error && (
           <Button
@@ -98,6 +98,12 @@ export function Login({ onLogin }: { onLogin: () => void }) {
         <div className="login-note">
           <ShieldCheck size={18} />
           Tú decides qué proveedor conectar.
+        </div>
+        <div className="login-demo">
+          <span>¿Quieres conocerlo sin iniciar sesión?</span>
+          <Button variant="outline" asChild>
+            <a href="/demo">Explorar la demo <ArrowUpRight size={17} /></a>
+          </Button>
         </div>
       </div>
       <p className="login-bottom">PABLO OS · v0.4 · PRIVADO Y SINCRONIZADO</p>

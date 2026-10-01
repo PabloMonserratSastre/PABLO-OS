@@ -8,11 +8,9 @@ from sqlalchemy import or_, select, update
 
 from .db import DB, Approval, Item, Owner, Run, Runtime, audit, now, uid
 from .integrations import approval_context
-from .knowledge import search
 from .presentation import render_results
 from .providers import CompatibleProvider, local_plan
-from .scheduling import dispatch_due
-from .tools import memory_search, registry, task_list
+from .tools import registry, task_list
 
 TERMINAL = {"COMPLETED", "FAILED", "CANCELLED", "PLANNED", "BLOCKED"}
 
@@ -43,7 +41,7 @@ def tick(run_id: str):
             owner = db.get(Owner, 1)
             audit(db, "planning.started", run_id=run.id)
             db.commit()
-            context = {"project": None, "memory": memory_search(db, {"query": run.goal}, run.project_id)}
+            context = {"project": None}
             context["current_time_utc"] = now()
             context["timezone"] = owner.settings.get("timezone", "Europe/Madrid")
             from datetime import datetime
@@ -52,7 +50,7 @@ def tick(run_id: str):
             context["current_local_datetime"] = local_now.isoformat()
             context["today"] = local_now.date().isoformat()
             tasks = task_list(db, {}, run.project_id)
-            context["pending_tasks"] = [{key: task.get(key) for key in ("title", "priority", "due", "status")}
+            context["pending_tasks"] = [{key: task.get(key) for key in ("id", "title", "priority", "due", "status", "project_id")}
                                         for task in tasks[:15]]
             context["pending_tasks_note"] = "Hasta 15 tareas, ordenadas por prioridad y fecha; puede haber más."
             if run.project_id:
@@ -72,16 +70,13 @@ def tick(run_id: str):
                 for r in reversed(history)
                 if r.data.get("conversation_id") == run.conversation_id and r.data.get("run_id") != run.id
             ][-12:]
-            from .commands import explicit_plan
-            exact = explicit_plan(run.goal, run.mode, context["timezone"])
-            if exact is None and run.mode in {"CHAT", "ASK", "RESEARCH"}:
-                from .pdf_tables import timetable_answer
-                from .schemas import Plan
-                answer = timetable_answer(db, run.goal, context['conversation'], run.project_id, context['today'])
-                if answer:
-                    exact = Plan(summary=answer, steps=[])
+            from .agenda import plan as agenda_plan
+            exact = agenda_plan(run.goal, run.mode, context["timezone"])
             # Simple commands do not need document retrieval or an embeddings call.
-            context["documents"] = [] if exact is not None else search(db, run.goal, run.project_id)
+            context["documents"] = []
+            rows = db.scalars(select(Item).where(Item.kind.in_(["tasks", "projects"])).order_by(Item.updated_at.desc()).limit(200)).all()
+            context["agenda_items"] = [{"id": row.id, "kind": row.kind, "title": row.title, "version": row.version, **row.data} for row in rows]
+            context["agenda_items_note"] = "Hasta 200 elementos recientes; usa items.list para consultar el resto."
             provider = CompatibleProvider()
             if not exact and provider.config.get("credential_error"):
                 raise ValueError(provider.config["credential_error"])
@@ -117,6 +112,8 @@ def tick(run_id: str):
             for i, step in enumerate(steps):
                 if any(d < 0 or d >= i for d in step["depends_on"]):
                     raise ValueError("Dependencias del plan inválidas o cíclicas.")
+                from .agenda import validate_step
+                validate_step(step)
                 registry.get(step["tool"])
             run.plan, run.usage, run.result = (
                 steps,
@@ -150,12 +147,25 @@ def tick(run_id: str):
             # provider for a second pass. The execution details retain the raw
             # checkpoint for diagnostics; the conversation gets a clean answer.
             final = outputs or run.result
+            # Advice uses the actual agenda results in a single, concise reply.
+            # Routine mutations use verified text without another provider call.
+            import re
+            if outputs and run.usage.get("synthesis") and all(registry.get(s["tool"]).risk == "SAFE" for s in steps) and re.search(r"prioriz|organizar|organizame|organízame|por d[oó]nde|aconsej|recomiend", run.goal, re.I):
+                try:
+                    answer, usage = CompatibleProvider().answer(run.goal, [s["result"] for s in steps])
+                    if answer.strip():
+                        final = answer
+                    run.usage = run.usage | {"total_tokens": run.usage.get("total_tokens", 0) + usage.get("total_tokens", 0)}
+                except ValueError:
+                    pass  # The verified agenda remains available if the provider fails.
             finish(db, run, "COMPLETED", final)
             db.commit()
             return
         index, step = pending
         if any(steps[d]["status"] != "DONE" for d in step["depends_on"]):
             raise ValueError("Dependencia pendiente.")
+        from .agenda import validate_step
+        validate_step(step)
         tool = registry.get(step["tool"])
         if tool.id in {"schedules.update", "schedules.delete"} and "expected" not in step["arguments"]:
             from .schedule_tools import resolve, snapshot
@@ -208,6 +218,11 @@ def tick(run_id: str):
         # intent first; interrupted effects are never replayed automatically.
         arguments = dict(step["arguments"])
         if tool.id == "tasks.create":
+            parents = [steps[d]["result"]["id"] for d in step["depends_on"] if steps[d]["tool"] == "projects.create"]
+            if len(parents) > 1:
+                raise ValueError("Una tarea solo puede pertenecer a un proyecto.")
+            if parents:
+                arguments["project_id"] = parents[0]
             arguments["dependencies"] = [
                 steps[d]["result"]["id"] for d in step["depends_on"] if steps[d]["tool"] == "tasks.create"
             ]
@@ -245,7 +260,6 @@ def tick(run_id: str):
             conversation = db.get(Item, run.conversation_id)
             if conversation and not conversation.data.get("project_id"):
                 conversation.data = conversation.data | {"project_id": result["id"]}
-
         step["status"], step["result"] = "DONE", result
         run.plan, run.updated_at = steps, now()
         if approval:
@@ -336,7 +350,6 @@ def main():
 
             apply_retention()
             last_cleanup = time.monotonic()
-        dispatch_due()
         with DB() as db:
             db.merge(Runtime(id="worker", updated_at=now()))
             db.commit()

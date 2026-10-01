@@ -40,7 +40,7 @@ CALENDAR_CASES = [
 ]
 
 
-@pytest.mark.parametrize("goal,expected", READ_CASES + [(g, ["google_calendar.list"]) for g in CALENDAR_CASES])
+@pytest.mark.parametrize("goal,expected", [case for case in READ_CASES if case[1] != ["daily.summary"]])
 def test_requests_reach_tools_and_visible_answer(client, monkeypatch, goal, expected):
     def forbidden(*args, **kwargs):
         raise AssertionError("Routine exact requests must not spend provider quota")
@@ -140,7 +140,7 @@ def test_weekdays_are_computed_not_guessed(weekday):
 
 
 def test_simple_request_does_not_search_documents(client, monkeypatch):
-    import pablo.worker as worker
+    import pablo.knowledge as worker
     def forbidden(*args):
         raise AssertionError("No document retrieval for a basic task query")
     monkeypatch.setattr(worker, "search", forbidden)
@@ -148,13 +148,12 @@ def test_simple_request_does_not_search_documents(client, monkeypatch):
     assert run_until_pause(row["id"]).status == "COMPLETED"
 
 
-def test_calendar_provider_fallback_preserves_date_bounds(client, monkeypatch):
+def test_calendar_provider_cannot_execute_retired_tool(client, monkeypatch):
     monkeypatch.setenv("AI_API_KEY", "test")
     monkeypatch.setenv("AI_MODEL", "test")
-    monkeypatch.setattr(CompatibleProvider, "request", lambda *a: {"choices": [{"message": {"content": json.dumps({"summary": "Agenda", "steps": [{"tool": "calendar.list", "arguments": {"from": "2026-09-18T00:00:00+02:00", "to": "2026-09-19T00:00:00+02:00"}}]})}}]})
-    plan, _ = CompatibleProvider().plan("Consulta mi agenda para el día indicado en la conversación", "CHAT", {})
-    assert plan.steps[0].tool == "google_calendar.list"
-    assert plan.steps[0].arguments == {"start": "2026-09-18T00:00:00+02:00", "end": "2026-09-19T00:00:00+02:00"}
+    monkeypatch.setattr(CompatibleProvider, "request", lambda *a: {"choices": [{"message": {"content": json.dumps({"summary": "Agenda", "steps": [{"tool": "calendar.list", "arguments": {}}]})}}]})
+    with pytest.raises(ValueError, match="ya no está disponible"):
+        CompatibleProvider().plan("Consulta mi agenda para el día indicado en la conversación", "CHAT", {})
 
 
 def test_gmail_count_and_inbox_default(monkeypatch):

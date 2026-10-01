@@ -13,6 +13,7 @@ generated/
 backups/
 __pycache__/
 .pytest_cache/
+.pytest-tmp*/
 dist/
 dist-local/
 .next/

@@ -64,7 +64,7 @@ def create_record(db, args, kind, project_id):
     item = Item(kind=kind, title=record.title, data=data)
     db.add(item)
     db.flush()
-    return {"id": item.id, "title": item.title, "verified": db.get(Item, item.id) is not None}
+    return {"id": item.id, "title": item.title, "due": data.get("due", ""), "project_id": data.get("project_id"), "verified": db.get(Item, item.id) is not None}
 
 
 def task_list(db, args, project_id):
@@ -74,6 +74,8 @@ def task_list(db, args, project_id):
         for r in rows
         if r.data.get("status") not in {"DONE", "CANCELLED"}
         and (not project_id or r.data.get("project_id") == project_id)
+        and (not args.get("due") or r.data.get("due") == args["due"])
+        and (not args.get("query") or str(args["query"]).casefold() in r.title.casefold())
     ]
     rows.sort(
         key=lambda r: (
@@ -179,7 +181,7 @@ AGENTS = [
 
 def project_list(db, args, project_id):
     rows = db.scalars(select(Item).where(Item.kind == "projects").order_by(Item.created_at.desc())).all()
-    return [{"id": row.id, "title": row.title, "status": row.data.get("status", "PLANNING")}
+    return [{"id": row.id, "title": row.title, "due": row.data.get("due", ""), "status": row.data.get("status", "PLANNING")}
             for row in rows if (not project_id or row.id == project_id)
             and (not args.get("pending", True) or row.data.get("status") not in {"DONE", "COMPLETED", "CANCELLED", "ARCHIVED"})]
 

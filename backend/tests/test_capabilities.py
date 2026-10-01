@@ -9,7 +9,6 @@ from test_flows import run_until_pause
 from pablo.configuration import reserve_request, settle_request
 from pablo.db import DB, BudgetPeriod, Run
 from pablo.tools import Tool, registry
-from pablo.worker import process
 from pablo.workspace_tools import code_run, code_scaffold, workspace_read, workspace_write
 
 
@@ -17,42 +16,37 @@ def test_calendar_tools_and_crud_share_storage(client):
     body = {"title": "Revisión", "start": "2026-12-01T09:00:00+01:00", "end": "2026-12-01T10:00:00+01:00"}
     item = client.post("/api/v1/calendar", json=body)
     assert item.status_code == 200
-    run = client.post("/api/v1/tool-runs", json={"tool": "calendar.list"}).json()
-    assert run_until_pause(run["id"]).status == "COMPLETED"
-    with DB() as db:
-        assert db.get(Run, run["id"]).plan[0]["result"]["events"][0]["title"] == "Revisión"
+    assert client.post("/api/v1/tool-runs", json={"tool": "calendar.list"}).status_code == 422
     assert client.patch("/api/v1/calendar/" + item.json()["id"], json=body | {"title": "Editado"}).status_code == 200
     assert client.post("/api/v1/calendar", json=body | {"end": body["start"]}).status_code == 422
     assert client.delete("/api/v1/calendar/" + item.json()["id"]).status_code == 200
     assert client.get("/api/v1/calendar").json() == []
 
 
-def test_all_specialists_operational_and_critical_requires_approval(client, monkeypatch):
-    assert all(agent["tools"] for agent in client.get("/api/v1/agents").json())
+def test_external_tools_are_retired_even_with_autonomy(client, monkeypatch):
+    assert client.get("/api/v1/agents").status_code == 404
     profile = client.get("/api/v1/state").json()["profile"]
     client.put("/api/v1/settings", json=profile | {"autonomy": "AUTONOMOUS"})
     called = []
     monkeypatch.setitem(registry.tools, "email.send", Tool("email.send", "CRITICAL", "Email", lambda *a: called.append(True) or {"sent": True}))
-    run = client.post("/api/v1/tool-runs", json={"tool": "email.send", "arguments": {"to": "test@example.invalid"}}).json()
-    assert run_until_pause(run["id"]).status == "WAITING_APPROVAL"
+    response = client.post("/api/v1/tool-runs", json={"tool": "email.send", "arguments": {"to": "test@example.invalid"}})
+    assert response.status_code == 422
     assert called == []
-    approval = client.get("/api/v1/state").json()["approvals"][0]
-    client.post("/api/v1/approvals/" + approval["id"], json={"approve": True})
-    assert run_until_pause(run["id"]).status == "COMPLETED"
-    process(run["id"])
-    assert called == [True]
 
 
-def test_ambiguous_external_write_cannot_replay(client, monkeypatch):
+def test_old_external_plan_cannot_resume(client, monkeypatch):
     def fail(*args):
         raise ValueError("Simulated lost response")
     monkeypatch.setitem(registry.tools, "email.send", Tool("email.send", "CRITICAL", "Email", fail))
-    run = client.post("/api/v1/tool-runs", json={"tool": "email.send"}).json()
-    run_until_pause(run["id"])
-    approval = client.get("/api/v1/state").json()["approvals"][0]
-    client.post("/api/v1/approvals/" + approval["id"], json={"approve": True})
+    run = client.post("/api/v1/commands", json={"goal": "Old stored run"}).json()
+    with DB() as db:
+        stored = db.get(Run, run["id"])
+        stored.status = "RUNNING"
+        stored.plan = [{"tool": "email.send", "arguments": {}, "depends_on": [], "status": "PENDING"}]
+        db.commit()
     assert run_until_pause(run["id"]).status == "FAILED"
-    assert client.post("/api/v1/runs/" + run["id"] + "/retry").status_code == 409
+    with DB() as db:
+        assert "ya no está disponible" in db.get(Run, run["id"]).result
 
 
 def test_provider_secret_hidden_and_persistent(client, monkeypatch):
