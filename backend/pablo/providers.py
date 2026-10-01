@@ -1,6 +1,7 @@
 """OpenAI-compatible adapter, selected entirely through server environment."""
 
 import json
+import logging
 import os
 from urllib.parse import urlsplit
 
@@ -48,7 +49,7 @@ class CompatibleProvider:
         usage = result.get("usage")
         return usage if isinstance(usage, dict) else {}
 
-    def request(self, path: str, payload: dict) -> dict:
+    def request(self, path: str, payload: dict, *, format_fallback=True) -> dict:
         from .configuration import reserve_request, settle_request
 
         reservation = reserve_request(self.config, payload)
@@ -74,12 +75,34 @@ class CompatibleProvider:
                 "Inicia Ollama/LM Studio o revisa la URL configurada."
             ) from None
         if not response.is_success:
+            try:
+                error = response.json().get("error", {})
+            except (ValueError, AttributeError):
+                error = {}
+            error = error if isinstance(error, dict) else {}
+            code = error.get("code")
+            # Groq can reject its own generated JSON with HTTP 400. Retry once
+            # without the transport format constraint; Plan still validates it
+            # before the worker can execute any action. Never replay tool writes.
+            if (response.status_code == 400 and format_fallback
+                    and code in {"json_validate_failed", "structured_generation_failed"}
+                    and path == "/chat/completions" and "response_format" in payload):
+                logging.getLogger(__name__).warning("Provider rejected generated JSON; retrying once with local validation")
+                fallback = dict(payload)
+                fallback.pop("response_format")
+                return self.request(path, fallback, format_fallback=False)
             if response.status_code == 429:
                 raise ValueError("El proveedor ha alcanzado su límite de uso. Espera a que se renueve la cuota o selecciona Ollama en Ajustes → Detectar IA local gratuita. No se ha cambiado de proveedor ni activado ningún plan de pago.")
             if local_provider and response.status_code == 404:
                 raise ValueError("El servidor local no encuentra el modelo o la ruta. En Ajustes, detecta Ollama y selecciona un modelo descargado.")
             if response.status_code in {401, 403}:
                 raise ValueError("El proveedor rechazó la autenticación. Revisa la clave y los permisos en Ajustes.")
+            if response.status_code == 400:
+                if code in {"json_validate_failed", "structured_generation_failed"}:
+                    raise ValueError("El modelo no pudo generar una respuesta válida. No se han aplicado cambios; vuelve a intentarlo.")
+                if code in {"model_not_found", "model_decommissioned"}:
+                    raise ValueError("El modelo configurado ya no está disponible. Selecciona un modelo válido en Ajustes.")
+                raise ValueError("El proveedor rechazó el formato de la petición (HTTP 400). No se han aplicado cambios. Comprueba el modelo y la URL en Ajustes.")
             raise ValueError(
                 f"El proveedor IA devolvió HTTP {response.status_code}. Revisa la configuración del servidor."
             )
@@ -116,7 +139,7 @@ class CompatibleProvider:
                 "response_format": ({"type": "json_schema", "json_schema": {"name": "execution_plan", "schema": schema}}
                                     if self.is_local else {"type": "json_object"}),
                 "messages": [
-                    {"role": "system", "content": AGENDA_POLICY + "\nCATÁLOGO ACTUAL (herramienta: argumentos):\n" + json.dumps({tool["id"]: tool["arguments"] for tool in catalog}, ensure_ascii=False, separators=(",", ":"))},
+                    {"role": "system", "content": AGENDA_POLICY + '\nFORMATO EXACTO: {"summary":"Respuesta breve", "steps":[{"tool":"tasks.create","arguments":{"title":"Ejemplo"},"depends_on":[]}]}. Para conversar: {"summary":"Tu respuesta", "steps":[]}. No uses tool_calls ni llames funciones del proveedor: devuelve el plan como texto JSON.\nCATÁLOGO ACTUAL (herramienta: argumentos):\n' + json.dumps({tool["id"]: tool["arguments"] for tool in catalog}, ensure_ascii=False, separators=(",", ":"))},
                     {
                         "role": "user",
                         "content": json.dumps(
